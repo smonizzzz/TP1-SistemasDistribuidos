@@ -1,0 +1,241 @@
+﻿<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>One Health Platform</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: #f5f7fa;
+        }
+
+        /* NAVBAR */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 50px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+            nav h2 {
+                color: #0ea5e9;
+            }
+
+            nav button {
+                padding: 8px 15px;
+                border: none;
+                background: #0ea5e9;
+                color: white;
+                border-radius: 5px;
+            }
+
+        /* HERO */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 50px;
+        }
+
+        /* TEXTO */
+        .hero-text {
+            max-width: 500px;
+        }
+
+            .hero-text h1 {
+                font-size: 40px;
+                color: #1e293b;
+            }
+
+            .hero-text span {
+                color: #0ea5e9;
+            }
+
+            .hero-text p {
+                color: #475569;
+            }
+
+            .hero-text button {
+                margin-top: 20px;
+                padding: 12px 20px;
+                background: #0ea5e9;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+
+        /* MAPA */
+        .map-box {
+            width: 500px;
+            height: 350px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* TABELA */
+        .table-section {
+            padding: 30px 50px;
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-collapse: collapse;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background: #0ea5e9;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f1f5f9;
+        }
+
+        .ativo {
+            color: green;
+        }
+
+        .offline {
+            color: red;
+        }
+
+        button.toggle {
+            padding: 5px 10px;
+            border: none;
+            background: #0ea5e9;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav>
+        <h2>🌍 One Health</h2>
+        <button>Dashboard</button>
+    </nav>
+
+    <!-- HERO -->
+    <div class="hero">
+
+        <div class="hero-text">
+            <h1>Plataforma de monitorização <span>IoT</span></h1>
+            <p>Controlo total dos sensores em tempo real</p>
+            <button>Explorar</button>
+        </div>
+
+        <div class="map-box">
+            <div id="map"></div>
+        </div>
+
+    </div>
+
+    <!-- TABELA -->
+    <div class="table-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Zona</th>
+                    <th>Estado</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody id="tabela"></tbody>
+        </table>
+    </div>
+
+    <script>
+
+        // 🔥 SENSORES
+        let sensores = [
+            { id: "S101", zona: "Lisboa", estado: "ativo", lat: 38.7169, lng: -9.1399 },
+            { id: "S102", zona: "Porto", estado: "ativo", lat: 41.1579, lng: -8.6291 },
+            { id: "S103", zona: "Faro", estado: "offline", lat: 37.0194, lng: -7.9304 },
+            { id: "S104", zona: "Madeira", estado: "ativo", lat: 32.7607, lng: -16.9595 },
+            { id: "S105", zona: "Açores", estado: "ativo", lat: 37.7412, lng: -25.6756 }
+        ];
+
+        // 🔥 MAPA
+        let map = L.map('map').setView([39.5, -8], 6);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+            .addTo(map);
+
+        let markers = [];
+
+        function atualizarMapa() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            sensores.forEach(sensor => {
+                let marker = L.marker([sensor.lat, sensor.lng])
+                    .addTo(map)
+                    .bindPopup(`${sensor.id} - ${sensor.zona}`);
+
+                markers.push(marker);
+            });
+        }
+
+        // 🔥 TABELA
+        function renderTabela() {
+            let tabela = document.getElementById("tabela");
+            tabela.innerHTML = "";
+
+            sensores.forEach((s, i) => {
+                tabela.innerHTML += `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.zona}</td>
+                    <td class="${s.estado}">${s.estado}</td>
+                    <td>
+                        <button class="toggle" onclick="toggle(${i})">
+                            ${s.estado === "ativo" ? "Desativar" : "Ativar"}
+                        </button>
+                    </td>
+                </tr>
+            `;
+            });
+        }
+
+        function toggle(i) {
+            sensores[i].estado =
+                sensores[i].estado === "ativo" ? "offline" : "ativo";
+
+            renderTabela();
+            atualizarMapa();
+        }
+
+        // iniciar
+        renderTabela();
+        atualizarMapa();
+
+    </script>
+
+</body>
+</html>
