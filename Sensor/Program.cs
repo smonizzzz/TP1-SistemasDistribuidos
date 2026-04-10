@@ -7,11 +7,11 @@ class Sensor
 {
     static void Main()
     {
-        // 🔹 ID do sensor
+        //  ID do sensor
         Console.Write("Introduz o ID do sensor (ex: S101): ");
         string sensorId = Console.ReadLine();
 
-        // 🔹 Ligar ao Gateway
+        //  Ligar ao Gateway
         TcpClient client = new TcpClient("127.0.0.1", 8000);
 
         StreamReader reader = new StreamReader(client.GetStream());
@@ -19,24 +19,18 @@ class Sensor
 
         Console.WriteLine("Ligado ao Gateway!");
 
-        // =========================
-        // 🔥 CONNECT
-        // =========================
+       
         writer.WriteLine($"CONNECT {sensorId}");
         string response = reader.ReadLine();
         Console.WriteLine("Resposta: " + response);
 
-        // =========================
-        // 🔥 TYPES
-        // =========================
-        string[] tipos = { "TEMP", "HUM", "RUIDO" };
+      
+        string[] tipos = { "TEMP", "HUM", "RUIDO","PM10" ,"PM25" ,"CO2" ,"UV" };
 
         writer.WriteLine("TYPES " + string.Join(",", tipos));
         reader.ReadLine();
 
-        // =========================
-        // 🔥 HEARTBEAT (THREAD)
-        // =========================
+       
         new Thread(() =>
         {
             while (true)
@@ -46,9 +40,7 @@ class Sensor
             }
         }).Start();
 
-        // =========================
-        // 🔥 SIMULAÇÃO DE DADOS (THREAD)
-        // =========================
+       
         new Thread(() =>
         {
             Random rnd = new Random();
@@ -65,9 +57,7 @@ class Sensor
             }
         }).Start();
 
-        // =========================
-        // 🔹 CONTROLO DO UTILIZADOR
-        // =========================
+   
         Console.WriteLine("Escreve 'EXIT' para terminar o sensor.");
 
         while (true)
@@ -78,9 +68,6 @@ class Sensor
                 break;
         }
 
-        // =========================
-        // 🔥 TERMINAR COMUNICAÇÃO
-        // =========================
         writer.WriteLine("DISCONNECT");
         client.Close();
 
