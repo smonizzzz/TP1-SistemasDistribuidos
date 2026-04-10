@@ -5,32 +5,63 @@ using System.Threading;
 
 class Sensor
 {
-    static void Main()
+    static void Main(string[] args)
     {
-        //  ID do sensor
-        Console.Write("Introduz o ID do sensor (ex: S101): ");
+        Console.WriteLine("========================================");
+        Console.WriteLine("      SISTEMA DE MONITORIZAÇÃO");
+        Console.WriteLine("========================================");
+        Console.WriteLine("Escolhe a Gateway:");
+        Console.WriteLine("  1. Norte  (porta 8001)");
+        Console.WriteLine("  2. Centro (porta 8002)");
+        Console.WriteLine("  3. Sul    (porta 8003)");
+        Console.WriteLine("  4. Ilhas  (porta 8004)");
+        Console.Write("Opção: ");
+
+        string opcao = Console.ReadLine();
+
+        string gatewayIp = "127.0.0.1";
+        int gatewayPort = opcao switch
+        {
+            "1" => 8001,
+            "2" => 8002,
+            "3" => 8003,
+            "4" => 8004,
+            _ => -1
+        };
+
+        if (gatewayPort == -1)
+        {
+            Console.WriteLine("Opção inválida. A terminar.");
+            return;
+        }
+
+        Console.Write("Introduz o ID do sensor (ex: S_NRT_001): ");
         string sensorId = Console.ReadLine();
 
-        //  Ligar ao Gateway
-        TcpClient client = new TcpClient("127.0.0.1", 8000);
+        TcpClient client = new TcpClient(gatewayIp, gatewayPort);
 
         StreamReader reader = new StreamReader(client.GetStream());
         StreamWriter writer = new StreamWriter(client.GetStream()) { AutoFlush = true };
 
-        Console.WriteLine("Ligado ao Gateway!");
+        Console.WriteLine($"Ligado ao Gateway {gatewayIp}:{gatewayPort}");
 
-       
         writer.WriteLine($"CONNECT {sensorId}");
         string response = reader.ReadLine();
         Console.WriteLine("Resposta: " + response);
 
-      
-        string[] tipos = { "TEMP", "HUM", "RUIDO","PM10" ,"PM25" ,"CO2" ,"UV" };
+        if (response != "ACK_OK")
+        {
+            Console.WriteLine("Ligação recusada pelo Gateway. A terminar.");
+            client.Close();
+            return;
+        }
+
+        string[] tipos = { "TEMP", "HUM", "RUIDO", "PM10", "PM25", "CO2", "UV", "AR" };
 
         writer.WriteLine("TYPES " + string.Join(",", tipos));
         reader.ReadLine();
 
-       
+        // Thread de Heartbeat
         new Thread(() =>
         {
             while (true)
@@ -38,9 +69,9 @@ class Sensor
                 writer.WriteLine("HEARTBEAT");
                 Thread.Sleep(5000);
             }
-        }).Start();
+        }) { IsBackground = true }.Start();
 
-       
+        // Thread de envio de dados
         new Thread(() =>
         {
             Random rnd = new Random();
@@ -55,16 +86,15 @@ class Sensor
 
                 Thread.Sleep(7000);
             }
-        }).Start();
+        }) { IsBackground = true }.Start();
 
-   
         Console.WriteLine("Escreve 'EXIT' para terminar o sensor.");
 
         while (true)
         {
             string input = Console.ReadLine();
 
-            if (input.ToUpper() == "EXIT")
+            if (input?.ToUpper() == "EXIT")
                 break;
         }
 

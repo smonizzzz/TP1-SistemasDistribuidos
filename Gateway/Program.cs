@@ -7,11 +7,46 @@ using System.Linq;
 
 class Gateway
 {
-    static string csvPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sensores.csv");
+    static string csvPath = "";
 
     static void Main()
     {
-        TcpListener listener = new TcpListener(IPAddress.Any, 8000);
+        Console.WriteLine("========================================");
+        Console.WriteLine("      SISTEMA DE MONITORIZAÇÃO");
+        Console.WriteLine("========================================");
+        Console.WriteLine("Escolhe a zona da Gateway:");
+        Console.WriteLine("  1. Norte  (porta 8001)");
+        Console.WriteLine("  2. Centro (porta 8002)");
+        Console.WriteLine("  3. Sul    (porta 8003)");
+        Console.WriteLine("  4. Ilhas  (porta 8004)");
+        Console.Write("Opção: ");
+
+        string opcao = Console.ReadLine() ?? "";
+
+        string nomeZona;
+        int porta;
+        string csvFile;
+
+        switch (opcao)
+        {
+            case "1": nomeZona = "NORTE";  porta = 8001; csvFile = "sensores_norte.csv";  break;
+            case "2": nomeZona = "CENTRO"; porta = 8002; csvFile = "sensores_centro.csv"; break;
+            case "3": nomeZona = "SUL";    porta = 8003; csvFile = "sensores_sul.csv";    break;
+            case "4": nomeZona = "ILHAS";  porta = 8004; csvFile = "sensores_ilhas.csv";  break;
+            default:
+                Console.WriteLine("Opção inválida. A terminar.");
+                return;
+        }
+
+        csvPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, csvFile);
+
+        if (!File.Exists(csvPath))
+        {
+            Console.WriteLine($"[ERRO] Ficheiro '{csvFile}' não encontrado.");
+            return;
+        }
+
+        TcpListener listener = new TcpListener(IPAddress.Any, porta);
         listener.Start();
 
         new Thread(() =>
@@ -24,15 +59,9 @@ class Gateway
         }).Start();
 
         Console.WriteLine("================================================");
-        Console.WriteLine(">>> GATEWAY PROFISSIONAL ATIVA (Porta 8000)");
-        Console.WriteLine($">>> FICHEIRO: {csvPath}");
+        Console.WriteLine($">>> GATEWAY {nomeZona} ATIVA (Porta {porta})");
+        Console.WriteLine($">>> FICHEIRO: {csvFile}");
         Console.WriteLine("================================================");
-
-        if (!File.Exists(csvPath))
-        {
-            Console.WriteLine("[AVISO] sensores.csv não encontrado! A criar ficheiro de exemplo...");
-            File.WriteAllText(csvPath, "S101:ativo:ZONA_CENTRO:[TEMP,HUM]:2026-03-10T08:45:00\nS102:manutencao:ZONA_ESCOLAR:[PM2.5]:2026-03-10T09:00:00");
-        }
 
         while (true)
         {
@@ -90,7 +119,7 @@ class Gateway
                             serverWriter.WriteLine($"SENSOR_CONNECT {sensorId} {zonaAtribuida}");
                             serverReader.ReadLine();
 
-                            Console.WriteLine($"[SISTEMA] Sensor {id} autorizado na {zonaAtribuida}.");
+                            Console.WriteLine($"[SISTEMA] Sensor {id} autorizado na zona {zonaAtribuida}.");
                         }
                         else
                         {
@@ -125,10 +154,7 @@ class Gateway
                            .Replace("[", "")
                            .Replace("]", "");
 
-                        string[] listaTipos = tiposPermitidos.Split(',');
-
-                        // remover espaços extra
-                        listaTipos = listaTipos.Select(t => t.Trim()).ToArray();
+                        string[] listaTipos = tiposPermitidos.Split(',').Select(t => t.Trim()).ToArray();
 
                         if (info != null && listaTipos.Contains(tipo))
                         {
@@ -138,13 +164,20 @@ class Gateway
                             serverWriter.WriteLine($"FORWARD_DATA {sensorId} {zonaAtribuida} {tipo} {parts[2]} {parts[3]}");
                             serverReader.ReadLine();
 
-                            Console.WriteLine($"[DADOS] {tipo} enviado para o servidor.");
+                            Console.WriteLine($"[DADOS] {tipo}={parts[2]} enviado para o servidor.");
                         }
                         else
                         {
                             writer.WriteLine("ACK_ERR_INVALID_TYPE");
                             Console.WriteLine($"[ERRO] Tipo {tipo} não permitido para o sensor {sensorId}.");
                         }
+                    }
+
+                    // --- DISCONNECT ---
+                    else if (comando == "DISCONNECT")
+                    {
+                        Console.WriteLine($"[SISTEMA] Sensor {sensorId} desligou-se.");
+                        break;
                     }
                 }
             }
@@ -193,16 +226,14 @@ class Gateway
             }
 
             if (alterado)
-            {
                 File.WriteAllLines(csvPath, linhas);
-                Console.WriteLine($"[ARQUIVO] Last Sync atualizado para {id}.");
-            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[ERRO ESCRITA] Não foi possível atualizar o CSV: {ex.Message}");
         }
     }
+
     static void VerificarSensoresOffline()
     {
         try
@@ -213,7 +244,6 @@ class Gateway
             {
                 string[] campos = linha.Split(':');
 
-                // Segurança extra (evita erros se linha estiver mal)
                 if (campos.Length < 5)
                     continue;
 
@@ -221,22 +251,13 @@ class Gateway
                 string estado = campos[1];
                 string lastSyncStr = campos[4];
 
-                // Tentar converter data
                 if (!DateTime.TryParse(lastSyncStr, out DateTime lastSync))
-                {
-                    continue; // ignora linhas inválidas
-                }
+                    continue;
 
                 double diferenca = (DateTime.Now - lastSync).TotalSeconds;
 
-                // 🔍 DEBUG (podes remover depois)
-                Console.WriteLine($"[DEBUG] Sensor {id} - Último sync: {lastSync} - Dif: {diferenca:F1}s");
-
-                // Verifica se está offline
                 if (diferenca > 10 && estado == "ativo")
-                {
-                    Console.WriteLine($"[ALERTA] Sensor {id} está OFFLINE!");
-                }
+                    Console.WriteLine($"[ALERTA] Sensor {id} está OFFLINE! (sem contacto há {diferenca:F0}s)");
             }
         }
         catch (Exception ex)

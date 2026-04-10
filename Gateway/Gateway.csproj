@@ -1,6 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <ItemGroup>
-  <None Include="sensores.csv">
+  <None Include="sensores_norte.csv">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </None>
+  <None Include="sensores_centro.csv">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </None>
+  <None Include="sensores_sul.csv">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </None>
+  <None Include="sensores_ilhas.csv">
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </None>
 </ItemGroup>

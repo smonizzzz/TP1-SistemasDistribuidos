@@ -27,12 +27,30 @@ class Servidor
         {
             try
             {
-                using (TcpClient gatewayClient = server.AcceptTcpClient())
-                using (StreamReader reader = new StreamReader(gatewayClient.GetStream()))
-                using (StreamWriter writer = new StreamWriter(gatewayClient.GetStream()) { AutoFlush = true })
+                TcpClient gatewayClient = server.AcceptTcpClient();
+
+                new Thread(() =>
                 {
-                    string message;
-                    while ((message = reader.ReadLine()) != null)
+                    ProcessarGateway(gatewayClient);
+                }) { IsBackground = true }.Start();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERRO] {ex.Message}");
+            }
+        }
+    }
+
+    static void ProcessarGateway(TcpClient gatewayClient)
+    {
+        try
+        {
+            using (gatewayClient)
+            using (StreamReader reader = new StreamReader(gatewayClient.GetStream()))
+            using (StreamWriter writer = new StreamWriter(gatewayClient.GetStream()) { AutoFlush = true })
+            {
+                string? message;
+                while ((message = reader.ReadLine()) != null)
                     {
                         Console.WriteLine($"[RECEBIDO] {message}");
 
@@ -70,12 +88,11 @@ class Servidor
 
                         writer.WriteLine("ACK_OK");
                     }
-                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ERRO] Conexão com Gateway interrompida: {ex.Message}");
-            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERRO] Conexão com Gateway interrompida: {ex.Message}");
         }
     }
 
