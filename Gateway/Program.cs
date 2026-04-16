@@ -4,10 +4,12 @@ using System.Net.Sockets;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 class Gateway
 {
     static string csvPath = "";
+    static readonly object lockCsv = new object();
 
     static void Main()
     {
@@ -49,6 +51,7 @@ class Gateway
         TcpListener listener = new TcpListener(IPAddress.Any, porta);
         listener.Start();
 
+        // Thread de monitorização offline (background)
         new Thread(() =>
         {
             while (true)
@@ -56,7 +59,7 @@ class Gateway
                 VerificarSensoresOffline();
                 Thread.Sleep(5000);
             }
-        }).Start();
+        }) { IsBackground = true }.Start();
 
         Console.WriteLine("================================================");
         Console.WriteLine($">>> GATEWAY {nomeZona} ATIVA (Porta {porta})");
@@ -83,80 +86,87 @@ class Gateway
 
     static void ProcessarComunicacao(TcpClient sensorClient)
     {
+        // Conexão ao servidor fechada corretamente com using
+        TcpClient? serverClient = null;
+        StreamWriter? serverWriter = null;
+        StreamReader? serverReader = null;
+
         try
         {
-            using (StreamReader reader = new StreamReader(sensorClient.GetStream()))
-            using (StreamWriter writer = new StreamWriter(sensorClient.GetStream()) { AutoFlush = true })
+            serverClient = new TcpClient("127.0.0.1", 9000);
+            serverWriter = new StreamWriter(serverClient.GetStream()) { AutoFlush = true };
+            serverReader = new StreamReader(serverClient.GetStream());
+
+            using StreamReader reader = new StreamReader(sensorClient.GetStream());
+            using StreamWriter writer = new StreamWriter(sensorClient.GetStream()) { AutoFlush = true };
+
+            string sensorId = "";
+            string zonaAtribuida = "";
+            string? message;
+
+            while ((message = reader.ReadLine()) != null)
             {
-                TcpClient serverClient = new TcpClient("127.0.0.1", 9000);
-                StreamWriter serverWriter = new StreamWriter(serverClient.GetStream()) { AutoFlush = true };
-                StreamReader serverReader = new StreamReader(serverClient.GetStream());
+                Console.WriteLine($"[RECEBIDO] {message}");
+                string[] parts = message.Split(' ');
+                string comando = parts[0].ToUpper();
 
-                string sensorId = "";
-                string zonaAtribuida = "";
-                string message;
-
-                while ((message = reader.ReadLine()) != null)
+                // --- CONNECT ---
+                if (comando == "CONNECT" && parts.Length >= 2)
                 {
-                    Console.WriteLine($"[RECEBIDO] {message}");
-                    string[] parts = message.Split(' ');
-                    string comando = parts[0].ToUpper();
+                    string id = parts[1];
+                    var info = ObterInfoSensor(id);
 
-                    // --- CONNECT ---
-                    if (comando == "CONNECT" && parts.Length >= 2)
+                    if (info != null && info[1] == "ativo")
                     {
-                        string id = parts[1];
-                        var info = ObterInfoSensor(id);
-
-                        if (info != null && info[1] == "ativo")
-                        {
-                            sensorId = id;
-                            zonaAtribuida = info[2];
-                            writer.WriteLine("ACK_OK");
-
-                            AtualizarLastSync(sensorId);
-
-                            serverWriter.WriteLine($"SENSOR_CONNECT {sensorId} {zonaAtribuida}");
-                            serverReader.ReadLine();
-
-                            Console.WriteLine($"[SISTEMA] Sensor {id} autorizado na zona {zonaAtribuida}.");
-                        }
-                        else
-                        {
-                            writer.WriteLine("ACK_ERR_UNAUTHORIZED");
-                            Console.WriteLine($"[NEGADO] Sensor {id} inválido ou em manutenção.");
-                            break;
-                        }
-                    }
-
-                    // --- TYPES ---
-                    else if (comando == "TYPES" && !string.IsNullOrEmpty(sensorId))
-                    {
+                        sensorId = id;
+                        zonaAtribuida = info[2];
                         writer.WriteLine("ACK_OK");
-                        Console.WriteLine($"[INFO] Tipos recebidos do sensor {sensorId}: {string.Join(" ", parts.Skip(1))}");
-                    }
 
-                    // --- HEARTBEAT ---
-                    else if (comando == "HEARTBEAT" && !string.IsNullOrEmpty(sensorId))
-                    {
-                        writer.WriteLine("ACK_OK");
                         AtualizarLastSync(sensorId);
-                        Console.WriteLine($"[HEARTBEAT] Sensor {sensorId} ativo.");
+
+                        serverWriter.WriteLine($"SENSOR_CONNECT {sensorId} {zonaAtribuida}");
+                        serverReader.ReadLine();
+
+                        Console.WriteLine($"[SISTEMA] Sensor {id} autorizado na zona {zonaAtribuida}.");
                     }
-
-                    // --- DATA ---
-                    else if (comando == "DATA" && parts.Length >= 4 && !string.IsNullOrEmpty(sensorId))
+                    else
                     {
-                        string tipo = parts[1].Trim();
-                        var info = ObterInfoSensor(sensorId);
+                        writer.WriteLine("ACK_ERR_UNAUTHORIZED");
+                        Console.WriteLine($"[NEGADO] Sensor {id} inválido ou em manutenção.");
+                        break;
+                    }
+                }
 
+                // --- TYPES ---
+                else if (comando == "TYPES" && !string.IsNullOrEmpty(sensorId))
+                {
+                    writer.WriteLine("ACK_OK");
+                    Console.WriteLine($"[INFO] Tipos recebidos do sensor {sensorId}: {string.Join(" ", parts.Skip(1))}");
+                }
+
+                // --- HEARTBEAT ---
+                else if (comando == "HEARTBEAT" && !string.IsNullOrEmpty(sensorId))
+                {
+                    writer.WriteLine("ACK_OK");
+                    AtualizarLastSync(sensorId);
+                    Console.WriteLine($"[HEARTBEAT] Sensor {sensorId} ativo.");
+                }
+
+                // --- DATA ---
+                else if (comando == "DATA" && parts.Length >= 4 && !string.IsNullOrEmpty(sensorId))
+                {
+                    string tipo = parts[1].Trim();
+                    var info = ObterInfoSensor(sensorId);
+
+                    if (info != null)
+                    {
                         string tiposPermitidos = info[3]
-                           .Replace("[", "")
-                           .Replace("]", "");
+                            .Replace("[", "")
+                            .Replace("]", "");
 
                         string[] listaTipos = tiposPermitidos.Split(',').Select(t => t.Trim()).ToArray();
 
-                        if (info != null && listaTipos.Contains(tipo))
+                        if (listaTipos.Contains(tipo))
                         {
                             writer.WriteLine("ACK_OK");
                             AtualizarLastSync(sensorId);
@@ -172,13 +182,25 @@ class Gateway
                             Console.WriteLine($"[ERRO] Tipo {tipo} não permitido para o sensor {sensorId}.");
                         }
                     }
-
-                    // --- DISCONNECT ---
-                    else if (comando == "DISCONNECT")
+                    else
                     {
-                        Console.WriteLine($"[SISTEMA] Sensor {sensorId} desligou-se.");
-                        break;
+                        writer.WriteLine("ACK_ERR_INVALID_TYPE");
                     }
+                }
+
+                // --- DISCONNECT ---
+                else if (comando == "DISCONNECT")
+                {
+                    writer.WriteLine("ACK_BYE");
+
+                    if (!string.IsNullOrEmpty(sensorId))
+                    {
+                        serverWriter.WriteLine($"SENSOR_DISCONNECT {sensorId}");
+                        serverReader.ReadLine();
+                    }
+
+                    Console.WriteLine($"[SISTEMA] Sensor {sensorId} desligou-se corretamente.");
+                    break;
                 }
             }
         }
@@ -186,18 +208,28 @@ class Gateway
         {
             Console.WriteLine($"[ERRO] Conexão terminada: {ex.Message}");
         }
+        finally
+        {
+            serverReader?.Close();
+            serverWriter?.Close();
+            serverClient?.Close();
+            sensorClient.Close();
+        }
     }
 
-    static string[] ObterInfoSensor(string id)
+    static string[]? ObterInfoSensor(string id)
     {
         try
         {
-            string[] linhas = File.ReadAllLines(csvPath);
-            foreach (string linha in linhas)
+            lock (lockCsv)
             {
-                string[] campos = linha.Split(':');
-                if (campos[0].Trim().Equals(id.Trim(), StringComparison.OrdinalIgnoreCase))
-                    return campos;
+                string[] linhas = File.ReadAllLines(csvPath);
+                foreach (string linha in linhas)
+                {
+                    string[] campos = linha.Split(':');
+                    if (campos[0].Trim().Equals(id.Trim(), StringComparison.OrdinalIgnoreCase))
+                        return campos;
+                }
             }
         }
         catch (Exception ex)
@@ -211,22 +243,25 @@ class Gateway
     {
         try
         {
-            List<string> linhas = File.ReadAllLines(csvPath).ToList();
-            bool alterado = false;
-
-            for (int i = 0; i < linhas.Count; i++)
+            lock (lockCsv)
             {
-                string[] campos = linhas[i].Split(':');
-                if (campos[0].Trim().Equals(id.Trim(), StringComparison.OrdinalIgnoreCase))
-                {
-                    linhas[i] = $"{campos[0]}:{campos[1]}:{campos[2]}:{campos[3]}:{DateTime.Now:yyyy-MM-ddTHH:mm:ss}";
-                    alterado = true;
-                    break;
-                }
-            }
+                List<string> linhas = File.ReadAllLines(csvPath).ToList();
+                bool alterado = false;
 
-            if (alterado)
-                File.WriteAllLines(csvPath, linhas);
+                for (int i = 0; i < linhas.Count; i++)
+                {
+                    string[] campos = linhas[i].Split(':');
+                    if (campos[0].Trim().Equals(id.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        linhas[i] = $"{campos[0]}:{campos[1]}:{campos[2]}:{campos[3]}:{DateTime.Now:yyyy-MM-ddTHH:mm:ss}";
+                        alterado = true;
+                        break;
+                    }
+                }
+
+                if (alterado)
+                    File.WriteAllLines(csvPath, linhas);
+            }
         }
         catch (Exception ex)
         {
@@ -234,35 +269,72 @@ class Gateway
         }
     }
 
-    static void VerificarSensoresOffline()
+    static void AtualizarEstadoSensor(string id, string novoEstado)
     {
         try
         {
-            string[] linhas = File.ReadAllLines(csvPath);
-
-            foreach (string linha in linhas)
+            lock (lockCsv)
             {
-                string[] campos = linha.Split(':');
+                List<string> linhas = File.ReadAllLines(csvPath).ToList();
+                bool alterado = false;
 
-                if (campos.Length < 5)
-                    continue;
+                for (int i = 0; i < linhas.Count; i++)
+                {
+                    string[] campos = linhas[i].Split(':');
+                    if (campos[0].Trim().Equals(id.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        linhas[i] = $"{campos[0]}:{novoEstado}:{campos[2]}:{campos[3]}:{campos[4]}";
+                        alterado = true;
+                        break;
+                    }
+                }
 
-                string id = campos[0];
-                string estado = campos[1];
-                string lastSyncStr = campos[4];
+                if (alterado)
+                    File.WriteAllLines(csvPath, linhas);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERRO ESTADO] {ex.Message}");
+        }
+    }
 
-                if (!DateTime.TryParse(lastSyncStr, out DateTime lastSync))
-                    continue;
+    static void VerificarSensoresOffline()
+    {
+        string[] linhas;
 
-                double diferenca = (DateTime.Now - lastSync).TotalSeconds;
-
-                if (diferenca > 10 && estado == "ativo")
-                    Console.WriteLine($"[ALERTA] Sensor {id} está OFFLINE! (sem contacto há {diferenca:F0}s)");
+        try
+        {
+            lock (lockCsv)
+            {
+                linhas = File.ReadAllLines(csvPath);
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[ERRO OFFLINE] {ex.Message}");
+            return;
+        }
+
+        foreach (string linha in linhas)
+        {
+            string[] campos = linha.Split(':');
+
+            if (campos.Length < 5) continue;
+
+            string id = campos[0];
+            string estado = campos[1];
+            string lastSyncStr = campos[4];
+
+            if (!DateTime.TryParse(lastSyncStr, out DateTime lastSync)) continue;
+
+            double diferenca = (DateTime.Now - lastSync).TotalSeconds;
+
+            if (diferenca > 10 && estado == "ativo")
+            {
+                Console.WriteLine($"[ALERTA] Sensor {id} OFFLINE há {diferenca:F0}s -> Estado alterado para 'manutencao'");
+                AtualizarEstadoSensor(id, "manutencao");
+            }
         }
     }
 }
