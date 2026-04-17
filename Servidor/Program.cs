@@ -23,12 +23,13 @@ class Servidor
         TcpListener server = new TcpListener(IPAddress.Any, 9000);
         server.Start();
 
-        Console.WriteLine("================================================");
+        Console.WriteLine("<================================================>");
         Console.WriteLine(">>> SERVIDOR ONE HEALTH - ATIVO");
-        Console.WriteLine(">>> Base de dados SQLite pronta (FK ativas)");
+        Console.WriteLine(">>> Base de dados SQLite pronta");
         Console.WriteLine($">>> Ficheiro DB: {dbPath}");
+        Console.WriteLine($">>> Iniciado em: {DateTime.Now}");
         Console.WriteLine(">>> A aguardar dados da Gateway na porta 9000...");
-        Console.WriteLine("================================================");
+        Console.WriteLine("<================================================>");
 
         while (true)
         {

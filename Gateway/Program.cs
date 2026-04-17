@@ -13,9 +13,9 @@ class Gateway
 
     static void Main()
     {
-        Console.WriteLine("========================================");
+        Console.WriteLine("<========================================>");
         Console.WriteLine("      SISTEMA DE MONITORIZAÇÃO");
-        Console.WriteLine("========================================");
+        Console.WriteLine("<========================================>");
         Console.WriteLine("Escolhe a zona da Gateway:");
         Console.WriteLine("  1. Norte  (porta 8001)");
         Console.WriteLine("  2. Centro (porta 8002)");
@@ -24,7 +24,7 @@ class Gateway
         Console.Write("Opção: ");
 
         string opcao = Console.ReadLine() ?? "";
-
+        
         string nomeZona;
         int porta;
         string csvFile;
