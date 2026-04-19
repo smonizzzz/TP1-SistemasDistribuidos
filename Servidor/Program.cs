@@ -137,6 +137,7 @@ class Servidor
             CREATE TABLE IF NOT EXISTS sensores (
                 id TEXT PRIMARY KEY,
                 zona TEXT NOT NULL,
+                estado TEXT NOT NULL DEFAULT 'ativo',
                 ultimo_contacto TEXT NOT NULL
             );
         ";
@@ -158,6 +159,15 @@ class Servidor
 
         using var cmd2 = new SqliteCommand(sqlMedicoes, connection);
         cmd2.ExecuteNonQuery();
+
+        // Migração: adiciona coluna estado a DBs existentes sem ela
+        try
+        {
+            using var cmdMigrate = new SqliteCommand(
+                "ALTER TABLE sensores ADD COLUMN estado TEXT NOT NULL DEFAULT 'ativo'", connection);
+            cmdMigrate.ExecuteNonQuery();
+        }
+        catch { /* coluna já existe — ignorar */ }
     }
 
     static void RegistarSensor(string sensorId, string zona)
@@ -165,8 +175,8 @@ class Servidor
         using var connection = AbrirConexao();
 
         string sql = @"
-            INSERT INTO sensores (id, zona, ultimo_contacto)
-            VALUES (@id, @zona, @ultimo_contacto)
+            INSERT INTO sensores (id, zona, estado, ultimo_contacto)
+            VALUES (@id, @zona, 'ativo', @ultimo_contacto)
             ON CONFLICT(id) DO UPDATE SET
                 zona = excluded.zona,
                 ultimo_contacto = excluded.ultimo_contacto;

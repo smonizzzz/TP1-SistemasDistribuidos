@@ -1,422 +1,524 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>One Health Dashboard</title>
 
-    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
     <style>
-        * {
-            box-sizing: border-box;
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #0f172a;
+            --surface:   #1e293b;
+            --surface2:  #273549;
+            --border:    #334155;
+            --primary:   #6366f1;
+            --sky:       #0ea5e9;
+            --text:      #f1f5f9;
+            --muted:     #94a3b8;
+            --green:     #22c55e;
+            --orange:    #f59e0b;
+            --red:       #ef4444;
+            --radius:    16px;
         }
 
         body {
-            margin: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-            color: #1e293b;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
         }
 
+        /* ── NAVBAR ── */
         nav {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 18px 40px;
-            background: rgba(255,255,255,0.92);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+            justify-content: space-between;
+            padding: 0 32px;
+            height: 64px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 1000;
         }
 
-        nav h2 {
-            margin: 0;
-            font-size: 26px;
-            color: #0284c7;
-        }
-
-        nav .nav-right {
+        .nav-logo {
             display: flex;
-            gap: 12px;
             align-items: center;
-        }
-
-        nav button {
-            padding: 10px 16px;
-            border: none;
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            color: white;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.25s;
-        }
-
-        nav button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 18px rgba(14,165,233,0.25);
-        }
-
-        .container {
-            width: min(1400px, 92%);
-            margin: 30px auto;
-        }
-
-        .hero {
-            display: grid;
-            grid-template-columns: 1.1fr 1.3fr;
-            gap: 24px;
-            align-items: stretch;
-        }
-
-        .hero-text {
-            background: white;
-            border-radius: 22px;
-            padding: 36px;
-            box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .hero-text h1 {
-            margin: 0 0 12px;
-            font-size: 42px;
-            line-height: 1.1;
-        }
-
-        .hero-text h1 span {
-            color: #0ea5e9;
-        }
-
-        .hero-text p {
-            font-size: 17px;
-            color: #475569;
-            margin-bottom: 24px;
-        }
-
-        .hero-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .hero-actions button,
-        .hero-actions select,
-        .hero-actions input {
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid #cbd5e1;
-            font-size: 14px;
-        }
-
-        .hero-actions button {
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .hero-actions button:hover {
-            opacity: 0.95;
-        }
-
-        .map-panel {
-            background: white;
-            border-radius: 22px;
-            padding: 18px;
-            box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
-        }
-
-        .map-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 6px 14px 6px;
-        }
-
-        .map-header h3 {
-            margin: 0;
+            gap: 10px;
             font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-logo .logo-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--sky));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .nav-logo span { color: var(--primary); }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            color: white;
+        }
+
+        .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+        .btn-ghost {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover { background: var(--border); }
+
+        /* ── MAIN ── */
+        .main {
+            padding: 28px 32px;
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+
+        .page-sub {
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 28px;
+        }
+
+        /* ── STAT CARDS ── */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px 24px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover { transform: translateY(-3px); }
+
+        .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .icon-total    { background: linear-gradient(135deg, #6366f1, #818cf8); }
+        .icon-ativo    { background: linear-gradient(135deg, #22c55e, #4ade80); }
+        .icon-offline  { background: linear-gradient(135deg, #ef4444, #f87171); }
+        .icon-manut    { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+
+        .stat-info h4 {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-info .value {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        /* ── GRID MAP + TABLE ── */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 22px;
+            margin-bottom: 22px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header h3 {
+            font-size: 16px;
+            font-weight: 700;
         }
 
         .legend {
             display: flex;
             gap: 14px;
-            flex-wrap: wrap;
-            font-size: 13px;
-            color: #475569;
+            font-size: 12px;
+            color: var(--muted);
         }
 
         .legend span {
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
         }
 
         .dot {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            display: inline-block;
-        }
-
-        .dot.green {
-            background: #22c55e;
-        }
-
-        .dot.red {
-            background: #ef4444;
-        }
-
-        .dot.orange {
-            background: #f59e0b;
         }
 
         #map {
             width: 100%;
-            height: 480px;
-            border-radius: 18px;
-            overflow: hidden;
+            height: 440px;
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin: 26px 0;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 18px;
-            padding: 22px;
-            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.07);
-        }
-
-        .stat-card h4 {
-            margin: 0;
-            font-size: 14px;
-            color: #64748b;
-            font-weight: 600;
-        }
-
-        .stat-card .value {
-            margin-top: 10px;
-            font-size: 30px;
-            font-weight: 700;
-        }
-
-        .table-section {
-            background: white;
-            border-radius: 22px;
-            padding: 24px;
-            box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
-        }
-
-        .table-top {
+        /* ── FILTERS ── */
+        .filters {
+            padding: 16px 22px;
+            border-bottom: 1px solid var(--border);
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 18px;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
-        .table-top h3 {
-            margin: 0;
+        .filters input,
+        .filters select {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
         }
+
+        .filters input:focus,
+        .filters select:focus { border-color: var(--primary); }
+
+        .filters input { flex: 1; min-width: 160px; }
+
+        /* ── TABLE ── */
+        .table-wrap { overflow-x: auto; }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            overflow: hidden;
         }
 
-        th, td {
-            padding: 14px 12px;
-            text-align: center;
+        thead th {
+            background: var(--surface2);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 12px 16px;
+            text-align: left;
         }
 
-        th {
-            background: #0f172a;
-            color: white;
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: var(--surface2); }
+
+        tbody td {
+            padding: 13px 16px;
             font-size: 14px;
         }
 
-        tr {
-            border-bottom: 1px solid #e2e8f0;
-            transition: 0.2s;
+        .sensor-id {
+            font-weight: 700;
+            color: var(--sky);
         }
 
-        tr:hover {
-            background: #f8fafc;
-        }
-
-        .estado-badge {
-            padding: 6px 12px;
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
             border-radius: 999px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
-            display: inline-block;
         }
 
-        .ativo {
-            background: #dcfce7;
-            color: #166534;
+        .badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
         }
 
-        .offline {
-            background: #fee2e2;
-            color: #991b1b;
-        }
+        .badge.ativo    { background: rgba(34,197,94,0.15);  color: #4ade80; }
+        .badge.manutencao { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .badge.offline  { background: rgba(239,68,68,0.15);  color: #f87171; }
+        .badge.ativo    .badge-dot { background: #22c55e; animation: pulse 2s infinite; }
+        .badge.manutencao .badge-dot { background: #f59e0b; }
+        .badge.offline  .badge-dot { background: #ef4444; }
 
-        .manutencao {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .toggle {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 10px;
+        .btn-toggle-on {
+            background: rgba(239,68,68,0.15);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,0.3);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+
+        .btn-toggle-on:hover { background: rgba(239,68,68,0.28); }
+
+        .btn-toggle-off {
+            background: rgba(34,197,94,0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34,197,94,0.3);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
             font-weight: 600;
-            color: white;
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            transition: 0.25s;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
         }
 
-        .toggle:hover {
-            transform: scale(1.03);
+        .btn-toggle-off:hover { background: rgba(34,197,94,0.28); }
+
+        /* ── FULL TABLE SECTION ── */
+        .full-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 32px;
         }
 
-        .leaflet-popup-content-wrapper {
-            border-radius: 14px;
-        }
+        /* ── LAST SYNC ── */
+        #lastSync { font-size: 13px; color: var(--muted); }
 
-        .popup-title {
-            font-weight: 700;
-            font-size: 15px;
-            margin-bottom: 6px;
-            color: #0f172a;
-        }
-
-        .popup-status {
-            font-weight: 600;
-        }
-
+        /* ── RESPONSIVE ── */
         @media (max-width: 1100px) {
-            .hero {
-                grid-template-columns: 1fr;
-            }
-
-            .stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .content-grid { grid-template-columns: 1fr; }
+            .stats { grid-template-columns: repeat(2,1fr); }
         }
 
-        @media (max-width: 700px) {
-            nav {
-                padding: 16px 20px;
-            }
-
-            .container {
-                width: 94%;
-            }
-
-            .hero-text h1 {
-                font-size: 32px;
-            }
-
-            .stats {
-                grid-template-columns: 1fr;
-            }
-
-            #map {
-                height: 380px;
-            }
-
-            th, td {
-                font-size: 13px;
-                padding: 10px 8px;
-            }
+        @media (max-width: 600px) {
+            .main { padding: 20px 16px; }
+            nav { padding: 0 16px; }
+            .stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stat-info .value { font-size: 26px; }
         }
+
+        /* ── LEAFLET POPUP ── */
+        .leaflet-popup-content-wrapper {
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+        }
+
+        .leaflet-popup-tip { background: var(--surface) !important; }
+
+        .popup-body { color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; }
+        .popup-body .popup-id { font-size: 15px; font-weight: 800; color: var(--sky); margin-bottom: 8px; }
+        .popup-body p { margin: 3px 0; color: var(--muted); }
+        .popup-body p span { color: var(--text); font-weight: 600; }
+        .leaflet-popup-close-button { color: var(--muted) !important; }
     </style>
 </head>
 
 <body>
 
-    <nav>
-        <h2>🌍 One Health</h2>
-        <div class="nav-right">
-            <button>Dashboard</button>
+<!-- NAVBAR -->
+<nav>
+    <div class="nav-logo">
+        <div class="logo-icon">🌍</div>
+        One<span>Health</span>
+    </div>
+    <div class="nav-right">
+        <div class="nav-badge">
+            <div class="pulse-dot"></div>
+            <span id="lastSync">A carregar...</span>
         </div>
-    </nav>
+        <button class="btn btn-ghost" onclick="carregarSensores()">
+            <i class="fa fa-rotate-right"></i> Atualizar
+        </button>
+    </div>
+</nav>
 
-    <div class="container">
+<!-- MAIN -->
+<div class="main">
 
-        <section class="hero">
-            <div class="hero-text">
-                <h1>Plataforma de monitorização <span>IoT</span></h1>
-                <p>
-                    Gestão inteligente de sensores em tempo real com visualização geográfica,
-                    estado operacional e controlo rápido por zona.
-                </p>
+    <p class="page-title">Dashboard de Monitorização</p>
+    <p class="page-sub">Controlo e visualização em tempo real dos sensores urbanos</p>
 
-                <div class="hero-actions">
-                    <input type="text" id="pesquisaSensor" placeholder="Procurar sensor por ID..." />
-                    <select id="filtroZona">
-                        <option value="Todos">Todas as zonas</option>
-                    </select>
-                    <button onclick="aplicarFiltros()">Filtrar</button>
-                    <button onclick="resetFiltros()">Limpar</button>
-                </div>
-            </div>
-
-            <div class="map-panel">
-                <div class="map-header">
-                    <h3>Mapa Interativo dos Sensores</h3>
-                    <div class="legend">
-                        <span><i class="dot green"></i> Ativo</span>
-                        <span><i class="dot red"></i> Offline</span>
-                        <span><i class="dot orange"></i> Manutenção</span>
-                    </div>
-                </div>
-                <div id="map"></div>
-            </div>
-        </section>
-
-        <section class="stats">
-            <div class="stat-card">
+    <!-- STATS -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-icon icon-total"><i class="fa fa-microchip" style="color:white"></i></div>
+            <div class="stat-info">
                 <h4>Total de Sensores</h4>
-                <div class="value" id="totalSensores">0</div>
+                <div class="value" id="totalSensores">—</div>
             </div>
-            <div class="stat-card">
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-ativo"><i class="fa fa-circle-check" style="color:white"></i></div>
+            <div class="stat-info">
                 <h4>Sensores Ativos</h4>
-                <div class="value" id="sensoresAtivos">0</div>
+                <div class="value" id="sensoresAtivos" style="color:var(--green)">—</div>
             </div>
-            <div class="stat-card">
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-offline"><i class="fa fa-circle-xmark" style="color:white"></i></div>
+            <div class="stat-info">
                 <h4>Sensores Offline</h4>
-                <div class="value" id="sensoresOffline">0</div>
+                <div class="value" id="sensoresOffline" style="color:var(--red)">—</div>
             </div>
-            <div class="stat-card">
-                <h4>Sensores em Manutenção</h4>
-                <div class="value" id="sensoresManutencao">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-manut"><i class="fa fa-wrench" style="color:white"></i></div>
+            <div class="stat-info">
+                <h4>Em Manutenção</h4>
+                <div class="value" id="sensoresManutencao" style="color:var(--orange)">—</div>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <section class="table-section">
-            <div class="table-top">
-                <h3>Lista de Sensores</h3>
-            </div>
+    <!-- MAP + MINI TABLE -->
+    <div class="content-grid">
 
+        <!-- MAP -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa fa-map-location-dot" style="color:var(--sky);margin-right:8px"></i>Mapa Interativo</h3>
+                <div class="legend">
+                    <span><div class="dot" style="background:var(--green)"></div> Ativo</span>
+                    <span><div class="dot" style="background:var(--orange)"></div> Manutenção</span>
+                    <span><div class="dot" style="background:var(--red)"></div> Offline</span>
+                </div>
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <!-- SIDE PANEL: filters + compact table -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa fa-sliders" style="color:var(--primary);margin-right:8px"></i>Sensores</h3>
+                <span style="font-size:13px;color:var(--muted)" id="countFiltro"></span>
+            </div>
+            <div class="filters">
+                <input type="text" id="pesquisaSensor" placeholder="&#xf002; Pesquisar por ID..." oninput="aplicarFiltros()" />
+                <select id="filtroZona" onchange="aplicarFiltros()">
+                    <option value="Todos">Todas as zonas</option>
+                </select>
+                <button class="btn btn-ghost" onclick="resetFiltros()" style="padding:8px 12px;font-size:13px">
+                    <i class="fa fa-xmark"></i>
+                </button>
+            </div>
+            <div class="table-wrap" style="max-height:360px;overflow-y:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Zona</th>
+                            <th>Estado</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL TABLE -->
+    <div class="full-card">
+        <div class="card-header">
+            <h3><i class="fa fa-table-list" style="color:var(--primary);margin-right:8px"></i>Lista Completa de Sensores</h3>
+        </div>
+        <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
@@ -428,175 +530,180 @@
                         <th>Ação</th>
                     </tr>
                 </thead>
-                <tbody id="tabela"></tbody>
+                <tbody id="tabelaCompleta"></tbody>
             </table>
-        </section>
+        </div>
     </div>
 
-    <script>
-        let sensores = [
-            { id: "S101", zona: "Centro", estado: "ativo", lat: 38.7169, lng: -9.1399 },
-            { id: "S102", zona: "Norte", estado: "ativo", lat: 41.1579, lng: -8.6291 },
-            { id: "S103", zona: "Sul", estado: "offline", lat: 37.0194, lng: -7.9304 },
-            { id: "S104", zona: "Madeira", estado: "manutencao", lat: 32.7607, lng: -16.9595 },
-            { id: "S105", zona: "Açores", estado: "ativo", lat: 37.7412, lng: -25.6756 }
-        ];
+</div>
 
-        let sensoresFiltrados = [...sensores];
+<script>
+    let sensores = [];
+    let sensoresFiltrados = [];
 
-        let map = L.map('map').setView([38.7, -9.2], 6);
+    const map = L.map('map').setView([39.5, -8.0], 6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+    let markers = [];
 
-        let markers = [];
-
-        function criarIcone(estado) {
-            let cor;
-
-            if (estado === "ativo") cor = "#22c55e";
-            else if (estado === "offline") cor = "#ef4444";
-            else if (estado === "manutencao") cor = "#f59e0b";
-            else cor = "#64748b";
-
-            return L.divIcon({
-                className: "",
-                html: `
-                    <div style="
-                        width: 18px;
-                        height: 18px;
-                        border-radius: 50%;
-                        background: ${cor};
-                        border: 3px solid white;
-                        box-shadow: 0 0 0 4px rgba(0,0,0,0.12);
-                    "></div>
-                `,
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
-            });
+    async function carregarSensores() {
+        try {
+            const response = await fetch("http://localhost:5227/sensores");
+            sensores = await response.json();
+            sensoresFiltrados = [...sensores];
+            preencherFiltroZonas();
+            renderTabela();
+            renderTabelaCompleta();
+            atualizarMapa();
+            atualizarStats();
+            document.getElementById("lastSync").textContent =
+                "Atualizado às " + new Date().toLocaleTimeString("pt-PT");
+        } catch (err) {
+            document.getElementById("lastSync").textContent = "Erro ao carregar";
+            console.error(err);
         }
+    }
 
-        function atualizarMapa() {
-            markers.forEach(marker => map.removeLayer(marker));
-            markers = [];
+    function criarIcone(estado) {
+        const cores = { ativo: "#22c55e", manutencao: "#f59e0b", offline: "#ef4444" };
+        const cor = cores[estado] ?? "#64748b";
+        return L.divIcon({
+            className: "",
+            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2.5px solid #1e293b;box-shadow:0 0 0 3px ${cor}44"></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+        });
+    }
 
-            let bounds = [];
+    function atualizarMapa() {
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        const bounds = [];
 
-            sensoresFiltrados.forEach(sensor => {
-                const marker = L.marker([sensor.lat, sensor.lng], {
-                    icon: criarIcone(sensor.estado)
-                })
+        sensoresFiltrados.forEach(s => {
+            if (!s.lat && !s.lng) return;
+            const m = L.marker([s.lat, s.lng], { icon: criarIcone(s.estado) })
                 .addTo(map)
                 .bindPopup(`
-                    <div style="min-width: 180px;">
-                        <div class="popup-title">${sensor.id}</div>
-                        <div><strong>Zona:</strong> ${sensor.zona}</div>
-                        <div class="popup-status"><strong>Estado:</strong> ${sensor.estado}</div>
-                        <div><strong>Lat:</strong> ${sensor.lat}</div>
-                        <div><strong>Lng:</strong> ${sensor.lng}</div>
+                    <div class="popup-body">
+                        <div class="popup-id">${s.id}</div>
+                        <p>Zona: <span>${s.zona}</span></p>
+                        <p>Estado: <span>${s.estado}</span></p>
+                        <p>Lat: <span>${s.lat}</span> | Lng: <span>${s.lng}</span></p>
                     </div>
                 `);
+            markers.push(m);
+            bounds.push([s.lat, s.lng]);
+        });
 
-                markers.push(marker);
-                bounds.push([sensor.lat, sensor.lng]);
-            });
+        if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
+    }
 
-            if (bounds.length > 0) {
-                map.fitBounds(bounds, { padding: [40, 40] });
-            }
-        }
+    function renderTabela() {
+        const tbody = document.getElementById("tabela");
+        tbody.innerHTML = "";
+        document.getElementById("countFiltro").textContent = `${sensoresFiltrados.length} sensor(es)`;
 
-        function renderTabela() {
-            const tabela = document.getElementById("tabela");
-            tabela.innerHTML = "";
+        sensoresFiltrados.forEach(s => {
+            const i = sensores.findIndex(x => x.id === s.id);
+            const isAtivo = s.estado === "ativo";
+            tbody.innerHTML += `
+                <tr>
+                    <td class="sensor-id">${s.id}</td>
+                    <td style="color:var(--muted);font-size:12px">${s.zona}</td>
+                    <td><span class="badge ${s.estado}"><div class="badge-dot"></div>${s.estado}</span></td>
+                    <td>
+                        <button class="${isAtivo ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggle(${i})">
+                            ${isAtivo ? '<i class="fa fa-power-off"></i> Desativar' : '<i class="fa fa-play"></i> Ativar'}
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    }
 
-            sensoresFiltrados.forEach((s) => {
-                const indexOriginal = sensores.findIndex(sensor => sensor.id === s.id);
+    function renderTabelaCompleta() {
+        const tbody = document.getElementById("tabelaCompleta");
+        tbody.innerHTML = "";
 
-                tabela.innerHTML += `
-                    <tr>
-                        <td><strong>${s.id}</strong></td>
-                        <td>${s.zona}</td>
-                        <td>
-                            <span class="estado-badge ${s.estado}">
-                                ${s.estado}
-                            </span>
-                        </td>
-                        <td>${s.lat}</td>
-                        <td>${s.lng}</td>
-                        <td>
-                            <button class="toggle" onclick="toggle(${indexOriginal})">
-                                ${s.estado === "ativo" ? "Desativar" : "Ativar"}
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
+        sensores.forEach((s, i) => {
+            const isAtivo = s.estado === "ativo";
+            tbody.innerHTML += `
+                <tr>
+                    <td class="sensor-id">${s.id}</td>
+                    <td>${s.zona}</td>
+                    <td><span class="badge ${s.estado}"><div class="badge-dot"></div>${s.estado}</span></td>
+                    <td style="color:var(--muted)">${s.lat || '—'}</td>
+                    <td style="color:var(--muted)">${s.lng || '—'}</td>
+                    <td>
+                        <button class="${isAtivo ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggle(${i})">
+                            ${isAtivo ? '<i class="fa fa-power-off"></i> Desativar' : '<i class="fa fa-play"></i> Ativar'}
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    }
 
-        function atualizarStats() {
-            const total = sensores.length;
-            const ativos = sensores.filter(s => s.estado === "ativo").length;
-            const offline = sensores.filter(s => s.estado === "offline").length;
-            const manutencao = sensores.filter(s => s.estado === "manutencao").length;
+    function atualizarStats() {
+        document.getElementById("totalSensores").textContent   = sensores.length;
+        document.getElementById("sensoresAtivos").textContent  = sensores.filter(s => s.estado === "ativo").length;
+        document.getElementById("sensoresOffline").textContent = sensores.filter(s => s.estado === "offline").length;
+        document.getElementById("sensoresManutencao").textContent = sensores.filter(s => s.estado === "manutencao").length;
+    }
 
-            document.getElementById("totalSensores").textContent = total;
-            document.getElementById("sensoresAtivos").textContent = ativos;
-            document.getElementById("sensoresOffline").textContent = offline;
-            document.getElementById("sensoresManutencao").textContent = manutencao;
-        }
+    function preencherFiltroZonas() {
+        const select = document.getElementById("filtroZona");
+        const zonas = [...new Set(sensores.map(s => s.zona))];
+        select.innerHTML = '<option value="Todos">Todas as zonas</option>';
+        zonas.forEach(z => {
+            const o = document.createElement("option");
+            o.value = z; o.textContent = z;
+            select.appendChild(o);
+        });
+    }
 
-        function preencherFiltroZonas() {
-            const select = document.getElementById("filtroZona");
-            const zonas = [...new Set(sensores.map(s => s.zona))];
-
-            zonas.forEach(zona => {
-                const option = document.createElement("option");
-                option.value = zona;
-                option.textContent = zona;
-                select.appendChild(option);
-            });
-        }
-
-        function aplicarFiltros() {
-            const texto = document.getElementById("pesquisaSensor").value.toLowerCase().trim();
-            const zona = document.getElementById("filtroZona").value;
-
-            sensoresFiltrados = sensores.filter(sensor => {
-                const matchTexto = sensor.id.toLowerCase().includes(texto);
-                const matchZona = zona === "Todos" || sensor.zona === zona;
-                return matchTexto && matchZona;
-            });
-
-            renderTabela();
-            atualizarMapa();
-        }
-
-        function resetFiltros() {
-            document.getElementById("pesquisaSensor").value = "";
-            document.getElementById("filtroZona").value = "Todos";
-            sensoresFiltrados = [...sensores];
-            renderTabela();
-            atualizarMapa();
-        }
-
-        function toggle(i) {
-            if (sensores[i].estado === "ativo") {
-                sensores[i].estado = "offline";
-            } else {
-                sensores[i].estado = "ativo";
-            }
-
-            aplicarFiltros();
-            atualizarStats();
-        }
-
-        preencherFiltroZonas();
-        atualizarStats();
+    function aplicarFiltros() {
+        const texto = document.getElementById("pesquisaSensor").value.toLowerCase().trim();
+        const zona  = document.getElementById("filtroZona").value;
+        sensoresFiltrados = sensores.filter(s => {
+            return s.id.toLowerCase().includes(texto) &&
+                   (zona === "Todos" || s.zona === zona);
+        });
         renderTabela();
         atualizarMapa();
-    </script>
+    }
+
+    function resetFiltros() {
+        document.getElementById("pesquisaSensor").value = "";
+        document.getElementById("filtroZona").value = "Todos";
+        sensoresFiltrados = [...sensores];
+        renderTabela();
+        atualizarMapa();
+    }
+
+    async function toggle(i) {
+        const sensor = sensores[i];
+        const novoEstado = sensor.estado === "ativo" ? "manutencao" : "ativo";
+        try {
+            const res = await fetch(`http://localhost:5227/sensores/${sensor.id}/estado/${novoEstado}`, { method: "POST" });
+            if (res.ok) {
+                sensores[i].estado = novoEstado;
+                aplicarFiltros();
+                renderTabelaCompleta();
+                atualizarStats();
+            } else {
+                alert(`Erro ao atualizar sensor ${sensor.id}`);
+            }
+        } catch {
+            alert("Não foi possível contactar a API.");
+        }
+    }
+
+    // Auto-refresh a cada 30 segundos
+    carregarSensores();
+    setInterval(carregarSensores, 30000);
+</script>
 
 </body>
 </html>

@@ -147,9 +147,19 @@ class Gateway
                 // --- HEARTBEAT ---
                 else if (comando == "HEARTBEAT" && !string.IsNullOrEmpty(sensorId))
                 {
-                    writer.WriteLine("ACK_OK");
-                    AtualizarLastSync(sensorId);
-                    Console.WriteLine($"[HEARTBEAT] Sensor {sensorId} ativo.");
+                    var infoHb = ObterInfoSensor(sensorId);
+                    if (infoHb != null && infoHb[1] == "ativo")
+                    {
+                        writer.WriteLine("ACK_OK");
+                        AtualizarLastSync(sensorId);
+                        Console.WriteLine($"[HEARTBEAT] Sensor {sensorId} ativo.");
+                    }
+                    else
+                    {
+                        writer.WriteLine("ACK_ERR_UNAUTHORIZED");
+                        Console.WriteLine($"[NEGADO] Sensor {sensorId} desativado remotamente. A encerrar sessão.");
+                        break;
+                    }
                 }
 
                 // --- DATA ---
@@ -158,7 +168,7 @@ class Gateway
                     string tipo = parts[1].Trim();
                     var info = ObterInfoSensor(sensorId);
 
-                    if (info != null)
+                    if (info != null && info[1] == "ativo")
                     {
                         string tiposPermitidos = info[3]
                             .Replace("[", "")
@@ -184,7 +194,9 @@ class Gateway
                     }
                     else
                     {
-                        writer.WriteLine("ACK_ERR_INVALID_TYPE");
+                        writer.WriteLine("ACK_ERR_UNAUTHORIZED");
+                        Console.WriteLine($"[NEGADO] Sensor {sensorId} desativado remotamente. A encerrar sessão.");
+                        break;
                     }
                 }
 
