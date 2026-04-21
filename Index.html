@@ -1,422 +1,943 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>One Health Dashboard</title>
 
-    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
     <style>
-        * {
-            box-sizing: border-box;
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #0f172a;
+            --surface:   #1e293b;
+            --surface2:  #273549;
+            --border:    #334155;
+            --primary:   #6366f1;
+            --sky:       #0ea5e9;
+            --text:      #f1f5f9;
+            --muted:     #94a3b8;
+            --green:     #22c55e;
+            --orange:    #f59e0b;
+            --red:       #ef4444;
+            --radius:    16px;
         }
 
         body {
-            margin: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-            color: #1e293b;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
         }
 
+        /* ── NAVBAR ── */
         nav {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 18px 40px;
-            background: rgba(255,255,255,0.92);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+            justify-content: space-between;
+            padding: 0 32px;
+            height: 64px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 1000;
         }
 
-        nav h2 {
-            margin: 0;
-            font-size: 26px;
-            color: #0284c7;
-        }
-
-        nav .nav-right {
+        .nav-logo {
             display: flex;
-            gap: 12px;
             align-items: center;
-        }
-
-        nav button {
-            padding: 10px 16px;
-            border: none;
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            color: white;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.25s;
-        }
-
-        nav button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 18px rgba(14,165,233,0.25);
-        }
-
-        .container {
-            width: min(1400px, 92%);
-            margin: 30px auto;
-        }
-
-        .hero {
-            display: grid;
-            grid-template-columns: 1.1fr 1.3fr;
-            gap: 24px;
-            align-items: stretch;
-        }
-
-        .hero-text {
-            background: white;
-            border-radius: 22px;
-            padding: 36px;
-            box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .hero-text h1 {
-            margin: 0 0 12px;
-            font-size: 42px;
-            line-height: 1.1;
-        }
-
-        .hero-text h1 span {
-            color: #0ea5e9;
-        }
-
-        .hero-text p {
-            font-size: 17px;
-            color: #475569;
-            margin-bottom: 24px;
-        }
-
-        .hero-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .hero-actions button,
-        .hero-actions select,
-        .hero-actions input {
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid #cbd5e1;
-            font-size: 14px;
-        }
-
-        .hero-actions button {
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .hero-actions button:hover {
-            opacity: 0.95;
-        }
-
-        .map-panel {
-            background: white;
-            border-radius: 22px;
-            padding: 18px;
-            box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
-        }
-
-        .map-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 6px 14px 6px;
-        }
-
-        .map-header h3 {
-            margin: 0;
+            gap: 10px;
             font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-logo .logo-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--sky));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .nav-logo span { color: var(--primary); }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            color: white;
+        }
+
+        .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+        .btn-ghost {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover { background: var(--border); }
+
+        /* ── MAIN ── */
+        .main {
+            padding: 28px 32px;
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+
+        .page-sub {
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 28px;
+        }
+
+        /* ── STAT CARDS ── */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px 24px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover { transform: translateY(-3px); }
+
+        .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .icon-total    { background: linear-gradient(135deg, #6366f1, #818cf8); }
+        .icon-ativo    { background: linear-gradient(135deg, #22c55e, #4ade80); }
+        .icon-offline  { background: linear-gradient(135deg, #ef4444, #f87171); }
+        .icon-manut    { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+
+        .stat-info h4 {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-info .value {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        /* ── GRID MAP + TABLE ── */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 22px;
+            margin-bottom: 22px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header h3 {
+            font-size: 16px;
+            font-weight: 700;
         }
 
         .legend {
             display: flex;
             gap: 14px;
-            flex-wrap: wrap;
-            font-size: 13px;
-            color: #475569;
+            font-size: 12px;
+            color: var(--muted);
         }
 
         .legend span {
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
         }
 
         .dot {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            display: inline-block;
-        }
-
-        .dot.green {
-            background: #22c55e;
-        }
-
-        .dot.red {
-            background: #ef4444;
-        }
-
-        .dot.orange {
-            background: #f59e0b;
         }
 
         #map {
             width: 100%;
-            height: 480px;
-            border-radius: 18px;
-            overflow: hidden;
+            height: 440px;
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin: 26px 0;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 18px;
-            padding: 22px;
-            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.07);
-        }
-
-        .stat-card h4 {
-            margin: 0;
-            font-size: 14px;
-            color: #64748b;
-            font-weight: 600;
-        }
-
-        .stat-card .value {
-            margin-top: 10px;
-            font-size: 30px;
-            font-weight: 700;
-        }
-
-        .table-section {
-            background: white;
-            border-radius: 22px;
-            padding: 24px;
-            box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
-        }
-
-        .table-top {
+        /* ── FILTERS ── */
+        .filters {
+            padding: 16px 22px;
+            border-bottom: 1px solid var(--border);
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 18px;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
-        .table-top h3 {
-            margin: 0;
+        .filters input,
+        .filters select {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
         }
+
+        .filters input:focus,
+        .filters select:focus { border-color: var(--primary); }
+
+        .filters input { flex: 1; min-width: 160px; }
+
+        /* ── TABLE ── */
+        .table-wrap { overflow-x: auto; }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            overflow: hidden;
         }
 
-        th, td {
-            padding: 14px 12px;
-            text-align: center;
+        thead th {
+            background: var(--surface2);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 12px 16px;
+            text-align: left;
         }
 
-        th {
-            background: #0f172a;
-            color: white;
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: var(--surface2); }
+
+        tbody td {
+            padding: 13px 16px;
             font-size: 14px;
         }
 
-        tr {
-            border-bottom: 1px solid #e2e8f0;
-            transition: 0.2s;
+        .sensor-id {
+            font-weight: 700;
+            color: var(--sky);
         }
 
-        tr:hover {
-            background: #f8fafc;
-        }
-
-        .estado-badge {
-            padding: 6px 12px;
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
             border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        .badge.ativo    { background: rgba(34,197,94,0.15);  color: #4ade80; }
+        .badge.manutencao { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .badge.offline  { background: rgba(239,68,68,0.15);  color: #f87171; }
+        .badge.ativo    .badge-dot { background: #22c55e; animation: pulse 2s infinite; }
+        .badge.manutencao .badge-dot { background: #f59e0b; }
+        .badge.offline  .badge-dot { background: #ef4444; }
+
+        .btn-toggle-on {
+            background: rgba(239,68,68,0.15);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,0.3);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+
+        .btn-toggle-on:hover { background: rgba(239,68,68,0.28); }
+
+        .btn-toggle-off {
+            background: rgba(34,197,94,0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34,197,94,0.3);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+
+        .btn-toggle-off:hover { background: rgba(34,197,94,0.28); }
+
+        /* ── FULL TABLE SECTION ── */
+        .full-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+
+        /* ── SISTEMA ── */
+        .sistema-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .sistema-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sistema-card h4 {
             font-size: 13px;
             font-weight: 700;
-            display: inline-block;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        .ativo {
-            background: #dcfce7;
-            color: #166534;
+        .sistema-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
         }
 
-        .offline {
-            background: #fee2e2;
-            color: #991b1b;
+        .sistema-status .dot-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
 
-        .manutencao {
-            background: #fef3c7;
-            color: #92400e;
-        }
+        .dot-on  { background: var(--green); animation: pulse 2s infinite; }
+        .dot-off { background: var(--red); }
 
-        .toggle {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 10px;
+        .btn-start {
+            background: rgba(34,197,94,0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34,197,94,0.3);
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn-start:hover { background: rgba(34,197,94,0.28); }
+        .btn-start:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-stop {
+            background: rgba(239,68,68,0.15);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,0.3);
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
             font-weight: 600;
-            color: white;
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            transition: 0.25s;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn-stop:hover  { background: rgba(239,68,68,0.28); }
+        .btn-stop:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .sensor-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+            flex-wrap: wrap;
         }
 
-        .toggle:hover {
-            transform: scale(1.03);
+        .sensor-form select,
+        .sensor-form input {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
         }
 
-        .leaflet-popup-content-wrapper {
-            border-radius: 14px;
+        .sensor-form label {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+            display: block;
         }
 
-        .popup-title {
-            font-weight: 700;
-            font-size: 15px;
-            margin-bottom: 6px;
-            color: #0f172a;
+        .sensor-form .field { display: flex; flex-direction: column; }
+
+        .sensores-ativos-lista {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
         }
 
-        .popup-status {
+        .sensor-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 12px;
             font-weight: 600;
+            color: var(--sky);
         }
 
+        .sensor-chip button {
+            background: none;
+            border: none;
+            color: var(--red);
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0;
+            line-height: 1;
+        }
+
+        /* ── TABS ── */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 28px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 10px 22px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--muted);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: -1px;
+        }
+
+        .tab-btn:hover { color: var(--text); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .tab-page { display: none; }
+        .tab-page.active { display: block; }
+
+        /* ── DADOS ── */
+        .dados-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .dados-stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+
+        .dados-stat .ds-val {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .dados-stat .ds-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        /* ── LAST SYNC ── */
+        #lastSync { font-size: 13px; color: var(--muted); }
+
+        /* ── RESPONSIVE ── */
         @media (max-width: 1100px) {
-            .hero {
-                grid-template-columns: 1fr;
-            }
-
-            .stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .content-grid { grid-template-columns: 1fr; }
+            .stats { grid-template-columns: repeat(2,1fr); }
         }
 
-        @media (max-width: 700px) {
-            nav {
-                padding: 16px 20px;
-            }
-
-            .container {
-                width: 94%;
-            }
-
-            .hero-text h1 {
-                font-size: 32px;
-            }
-
-            .stats {
-                grid-template-columns: 1fr;
-            }
-
-            #map {
-                height: 380px;
-            }
-
-            th, td {
-                font-size: 13px;
-                padding: 10px 8px;
-            }
+        @media (max-width: 600px) {
+            .main { padding: 20px 16px; }
+            nav { padding: 0 16px; }
+            .stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stat-info .value { font-size: 26px; }
         }
+
+        /* ── BANNER API OFFLINE ── */
+        #api-banner {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 9999;
+            background: #991b1b;
+            color: #fecaca;
+            text-align: center;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        #api-banner.visible { display: block; }
+        body.api-offline nav { top: 38px; }
+        body.api-offline .main { padding-top: 24px; }
+
+        /* ── TOAST ── */
+        #toast {
+            position: fixed;
+            bottom: 24px; right: 24px;
+            background: #1e293b;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-size: 13px;
+            color: var(--text);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.25s, transform 0.25s;
+            z-index: 9998;
+            max-width: 320px;
+        }
+        #toast.show { opacity: 1; transform: translateY(0); }
+        #toast.toast-err  { border-color: #ef4444; color: #fca5a5; }
+        #toast.toast-ok   { border-color: #22c55e; color: #86efac; }
+
+        /* ── ALERTAS ── */
+        .alerta-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 22px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+        .alerta-row:last-child { border-bottom: none; }
+        .tipo-badge {
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* ── LEAFLET POPUP ── */
+        .leaflet-popup-content-wrapper {
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+        }
+
+        .leaflet-popup-tip { background: var(--surface) !important; }
+
+        .popup-body { color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; }
+        .popup-body .popup-id { font-size: 15px; font-weight: 800; color: var(--sky); margin-bottom: 8px; }
+        .popup-body p { margin: 3px 0; color: var(--muted); }
+        .popup-body p span { color: var(--text); font-weight: 600; }
+        .leaflet-popup-close-button { color: var(--muted) !important; }
     </style>
 </head>
 
 <body>
 
-    <nav>
-        <h2>🌍 One Health</h2>
-        <div class="nav-right">
-            <button>Dashboard</button>
+<!-- BANNER API OFFLINE -->
+<div id="api-banner">
+    <i class="fa fa-triangle-exclamation" style="margin-right:8px"></i>
+    API offline — OneHealthAPI não está a correr. Os dados apresentados podem estar desatualizados.
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- NAVBAR -->
+<nav>
+    <div class="nav-logo">
+        <div class="logo-icon">🌍</div>
+        One<span>Health</span>
+    </div>
+    <div class="nav-right">
+        <div class="nav-badge">
+            <div class="pulse-dot"></div>
+            <span id="lastSync">A carregar...</span>
         </div>
-    </nav>
+        <button class="btn btn-ghost" onclick="carregarSensores(); carregarAlertas()">
+            <i class="fa fa-rotate-right"></i> Atualizar
+        </button>
+    </div>
+</nav>
 
-    <div class="container">
+<!-- MAIN -->
+<div class="main">
 
-        <section class="hero">
-            <div class="hero-text">
-                <h1>Plataforma de monitorização <span>IoT</span></h1>
-                <p>
-                    Gestão inteligente de sensores em tempo real com visualização geográfica,
-                    estado operacional e controlo rápido por zona.
-                </p>
+    <p class="page-title">Dashboard de Monitorização</p>
+    <p class="page-sub">Controlo e visualização em tempo real dos sensores urbanos</p>
 
-                <div class="hero-actions">
-                    <input type="text" id="pesquisaSensor" placeholder="Procurar sensor por ID..." />
-                    <select id="filtroZona">
-                        <option value="Todos">Todas as zonas</option>
-                    </select>
-                    <button onclick="aplicarFiltros()">Filtrar</button>
-                    <button onclick="resetFiltros()">Limpar</button>
+    <!-- TABS -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="mudarTab('dashboard', this)">
+            <i class="fa fa-gauge" style="margin-right:6px"></i>Monitorização
+        </button>
+        <button class="tab-btn" onclick="mudarTab('dados', this)">
+            <i class="fa fa-table" style="margin-right:6px"></i>Dados da BD
+        </button>
+    </div>
+
+    <!-- TAB: DASHBOARD -->
+    <div id="tab-dashboard" class="tab-page active">
+
+    <!-- SISTEMA -->
+    <div class="card" style="margin-bottom:28px">
+        <div class="card-header">
+            <h3><i class="fa fa-server" style="color:var(--primary);margin-right:8px"></i>Controlo do Sistema</h3>
+            <button class="btn btn-ghost" style="font-size:12px" onclick="atualizarStatusSistema()">
+                <i class="fa fa-rotate-right"></i> Atualizar
+            </button>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+
+            <!-- Servidor + Gateways -->
+            <div class="sistema-grid">
+
+                <!-- SERVIDOR -->
+                <div class="sistema-card">
+                    <h4><i class="fa fa-database" style="margin-right:6px"></i>Servidor</h4>
+                    <div class="sistema-status">
+                        <div class="dot-status dot-off" id="dot-servidor"></div>
+                        <span id="label-servidor">Parado</span>
+                    </div>
+                    <button class="btn-start" id="btn-start-servidor" onclick="iniciarServidor()">
+                        <i class="fa fa-play"></i> Iniciar
+                    </button>
+                    <button class="btn-stop" id="btn-stop-servidor" onclick="pararServidor()" disabled>
+                        <i class="fa fa-stop"></i> Parar
+                    </button>
+                </div>
+
+                <!-- GATEWAYS -->
+                <div class="sistema-card" id="card-gw-norte">
+                    <h4><i class="fa fa-network-wired" style="margin-right:6px"></i>Gateway Norte</h4>
+                    <div class="sistema-status">
+                        <div class="dot-status dot-off" id="dot-gw-norte"></div>
+                        <span id="label-gw-norte">Parada</span>
+                    </div>
+                    <button class="btn-start" id="btn-start-gw-norte" onclick="iniciarGateway('norte')">
+                        <i class="fa fa-play"></i> Iniciar
+                    </button>
+                    <button class="btn-stop" id="btn-stop-gw-norte" onclick="pararGateway('norte')" disabled>
+                        <i class="fa fa-stop"></i> Parar
+                    </button>
+                </div>
+
+                <div class="sistema-card">
+                    <h4><i class="fa fa-network-wired" style="margin-right:6px"></i>Gateway Centro</h4>
+                    <div class="sistema-status">
+                        <div class="dot-status dot-off" id="dot-gw-centro"></div>
+                        <span id="label-gw-centro">Parada</span>
+                    </div>
+                    <button class="btn-start" id="btn-start-gw-centro" onclick="iniciarGateway('centro')">
+                        <i class="fa fa-play"></i> Iniciar
+                    </button>
+                    <button class="btn-stop" id="btn-stop-gw-centro" onclick="pararGateway('centro')" disabled>
+                        <i class="fa fa-stop"></i> Parar
+                    </button>
+                </div>
+
+                <div class="sistema-card">
+                    <h4><i class="fa fa-network-wired" style="margin-right:6px"></i>Gateway Sul</h4>
+                    <div class="sistema-status">
+                        <div class="dot-status dot-off" id="dot-gw-sul"></div>
+                        <span id="label-gw-sul">Parada</span>
+                    </div>
+                    <button class="btn-start" id="btn-start-gw-sul" onclick="iniciarGateway('sul')">
+                        <i class="fa fa-play"></i> Iniciar
+                    </button>
+                    <button class="btn-stop" id="btn-stop-gw-sul" onclick="pararGateway('sul')" disabled>
+                        <i class="fa fa-stop"></i> Parar
+                    </button>
+                </div>
+
+                <div class="sistema-card">
+                    <h4><i class="fa fa-network-wired" style="margin-right:6px"></i>Gateway Ilhas</h4>
+                    <div class="sistema-status">
+                        <div class="dot-status dot-off" id="dot-gw-ilhas"></div>
+                        <span id="label-gw-ilhas">Parada</span>
+                    </div>
+                    <button class="btn-start" id="btn-start-gw-ilhas" onclick="iniciarGateway('ilhas')">
+                        <i class="fa fa-play"></i> Iniciar
+                    </button>
+                    <button class="btn-stop" id="btn-stop-gw-ilhas" onclick="pararGateway('ilhas')" disabled>
+                        <i class="fa fa-stop"></i> Parar
+                    </button>
                 </div>
             </div>
 
-            <div class="map-panel">
-                <div class="map-header">
-                    <h3>Mapa Interativo dos Sensores</h3>
-                    <div class="legend">
-                        <span><i class="dot green"></i> Ativo</span>
-                        <span><i class="dot red"></i> Offline</span>
-                        <span><i class="dot orange"></i> Manutenção</span>
+            <!-- Lançar Sensor -->
+            <div>
+                <p style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">
+                    <i class="fa fa-microchip" style="margin-right:6px"></i>Lançar Sensor
+                </p>
+                <div class="sensor-form">
+                    <div class="field">
+                        <label>Zona (Gateway)</label>
+                        <select id="sensor-zona">
+                            <option value="1">Norte (8001)</option>
+                            <option value="2">Centro (8002)</option>
+                            <option value="3">Sul (8003)</option>
+                            <option value="4">Ilhas (8004)</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>ID do Sensor</label>
+                        <input type="text" id="sensor-id-input" placeholder="ex: S_NRT_001" oninput="autoZonaDoId(this.value)" />
+                    </div>
+                    <div class="field">
+                        <label style="display:flex;align-items:center;gap:6px">
+                            <input type="checkbox" id="sensor-auto" />
+                            Auto envio
+                        </label>
+                        <button class="btn-start" style="width:auto;padding:8px 20px" onclick="lancarSensor()">
+                            <i class="fa fa-rocket"></i> Lançar
+                        </button>
                     </div>
                 </div>
-                <div id="map"></div>
             </div>
-        </section>
 
-        <section class="stats">
-            <div class="stat-card">
+            <!-- Sensores em execução -->
+            <div id="sensores-em-execucao-wrapper" style="display:none">
+                <p style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+                    <i class="fa fa-circle-check" style="color:var(--green);margin-right:6px"></i>Sensores em execução
+                </p>
+                <div class="sensores-ativos-lista" id="sensores-em-execucao"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div class="card" style="margin-bottom:28px">
+        <div class="card-header">
+            <h3><i class="fa fa-triangle-exclamation" style="color:var(--orange);margin-right:8px"></i>Alertas de Threshold</h3>
+            <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-size:13px;color:var(--muted)" id="alertas-count"></span>
+                <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="carregarAlertas()">
+                    <i class="fa fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+        <div id="alertas-lista" style="max-height:200px;overflow-y:auto">
+            <p style="padding:16px 22px;color:var(--muted);font-size:13px">Sem alertas recentes.</p>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-icon icon-total"><i class="fa fa-microchip" style="color:white"></i></div>
+            <div class="stat-info">
                 <h4>Total de Sensores</h4>
-                <div class="value" id="totalSensores">0</div>
+                <div class="value" id="totalSensores">—</div>
             </div>
-            <div class="stat-card">
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-ativo"><i class="fa fa-circle-check" style="color:white"></i></div>
+            <div class="stat-info">
                 <h4>Sensores Ativos</h4>
-                <div class="value" id="sensoresAtivos">0</div>
+                <div class="value" id="sensoresAtivos" style="color:var(--green)">—</div>
             </div>
-            <div class="stat-card">
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-offline"><i class="fa fa-circle-xmark" style="color:white"></i></div>
+            <div class="stat-info">
                 <h4>Sensores Offline</h4>
-                <div class="value" id="sensoresOffline">0</div>
+                <div class="value" id="sensoresOffline" style="color:var(--red)">—</div>
             </div>
-            <div class="stat-card">
-                <h4>Sensores em Manutenção</h4>
-                <div class="value" id="sensoresManutencao">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-manut"><i class="fa fa-wrench" style="color:white"></i></div>
+            <div class="stat-info">
+                <h4>Em Manutenção</h4>
+                <div class="value" id="sensoresManutencao" style="color:var(--orange)">—</div>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <section class="table-section">
-            <div class="table-top">
-                <h3>Lista de Sensores</h3>
-            </div>
+    <!-- MAP + MINI TABLE -->
+    <div class="content-grid">
 
+        <!-- MAP -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa fa-map-location-dot" style="color:var(--sky);margin-right:8px"></i>Mapa Interativo</h3>
+                <div class="legend">
+                    <span><div class="dot" style="background:var(--green)"></div> Ativo</span>
+                    <span><div class="dot" style="background:var(--orange)"></div> Manutenção</span>
+                    <span><div class="dot" style="background:var(--red)"></div> Offline</span>
+                </div>
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <!-- SIDE PANEL: filters + compact table -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa fa-sliders" style="color:var(--primary);margin-right:8px"></i>Sensores</h3>
+                <span style="font-size:13px;color:var(--muted)" id="countFiltro"></span>
+            </div>
+            <div class="filters">
+                <input type="text" id="pesquisaSensor" placeholder="&#xf002; Pesquisar por ID..." oninput="aplicarFiltros()" />
+                <select id="filtroZona" onchange="aplicarFiltros()">
+                    <option value="Todos">Todas as zonas</option>
+                </select>
+                <button class="btn btn-ghost" onclick="resetFiltros()" style="padding:8px 12px;font-size:13px">
+                    <i class="fa fa-xmark"></i>
+                </button>
+            </div>
+            <div class="table-wrap" style="max-height:360px;overflow-y:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Zona</th>
+                            <th>Estado</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL TABLE -->
+    <div class="full-card">
+        <div class="card-header">
+            <h3><i class="fa fa-table-list" style="color:var(--primary);margin-right:8px"></i>Lista Completa de Sensores</h3>
+        </div>
+        <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
@@ -428,182 +949,707 @@
                         <th>Ação</th>
                     </tr>
                 </thead>
-                <tbody id="tabela"></tbody>
+                <tbody id="tabelaCompleta"></tbody>
             </table>
-        </section>
+        </div>
     </div>
 
-    <script>
-        let sensores = [];
+    </div><!-- /tab-dashboard -->
 
-async function carregarSensores() {
-    try {
-        const response = await fetch("http://localhost:5227/sensores");
-        sensores = await response.json();
+    <!-- TAB: DADOS -->
+    <div id="tab-dados" class="tab-page">
 
-        sensoresFiltrados = [...sensores];
+        <!-- STATS DA BD -->
+        <div class="dados-stats" id="dados-stats-grid">
+            <div class="dados-stat">
+                <div class="ds-val" id="ds-total">—</div>
+                <div class="ds-label">Total medições</div>
+            </div>
+        </div>
 
-        renderTabela();
-        atualizarMapa();
-        atualizarStats();
-    } catch (err) {
-        console.error("Erro ao carregar sensores:", err);
-    }
-}
+        <!-- GRÁFICO -->
+        <div class="full-card" id="grafico-card" style="margin-bottom:22px;display:none">
+            <div class="card-header">
+                <h3><i class="fa fa-chart-line" style="color:var(--primary);margin-right:8px"></i>Gráfico de Medições</h3>
+                <span style="font-size:12px;color:var(--muted)">Seleciona um tipo de medição para ver o gráfico</span>
+            </div>
+            <div style="padding:16px 22px;height:260px">
+                <canvas id="medicoes-chart"></canvas>
+            </div>
+        </div>
 
-        let sensoresFiltrados = [...sensores];
+        <!-- FILTROS -->
+        <div class="full-card" style="margin-bottom:22px">
+            <div class="card-header">
+                <h3><i class="fa fa-filter" style="color:var(--primary);margin-right:8px"></i>Filtros</h3>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">
+                        <input type="checkbox" id="dados-autorefresh" onchange="toggleAutoRefreshDados()" />
+                        Auto-refresh (5s)
+                    </label>
+                    <button class="btn btn-ghost" style="font-size:12px" onclick="carregarDados()">
+                        <i class="fa fa-rotate-right"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="filters" style="padding:16px 22px">
+                <input type="text" id="f-sensor" placeholder="Sensor ID..." oninput="carregarDados()" style="max-width:180px" />
+                <select id="f-tipo" onchange="carregarDados()">
+                    <option value="">Todos os tipos</option>
+                    <option>TEMP</option><option>HUM</option><option>RUIDO</option>
+                    <option>PM10</option><option>PM25</option><option>CO2</option>
+                    <option>UV</option><option>AR</option>
+                </select>
+                <select id="f-zona" onchange="carregarDados()">
+                    <option value="">Todas as zonas</option>
+                </select>
+                <select id="f-limite" onchange="carregarDados()">
+                    <option value="50">50 registos</option>
+                    <option value="100" selected>100 registos</option>
+                    <option value="500">500 registos</option>
+                    <option value="1000">1000 registos</option>
+                </select>
+                <button class="btn btn-ghost" style="font-size:12px" onclick="limparFiltrosDados()">
+                    <i class="fa fa-xmark"></i> Limpar
+                </button>
+            </div>
+        </div>
 
-        let map = L.map('map').setView([38.7, -9.2], 6);
+        <!-- TABELA MEDIÇÕES -->
+        <div class="full-card">
+            <div class="card-header">
+                <h3><i class="fa fa-chart-line" style="color:var(--sky);margin-right:8px"></i>Medições</h3>
+                <span style="font-size:13px;color:var(--muted)" id="dados-count"></span>
+            </div>
+            <div class="table-wrap" style="max-height:520px;overflow-y:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Sensor</th>
+                            <th>Zona</th>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-dados"></tbody>
+                </table>
+            </div>
+        </div>
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        <!-- HISTÓRICO DE ESTADO -->
+        <div class="full-card" style="margin-bottom:32px">
+            <div class="card-header">
+                <h3><i class="fa fa-clock-rotate-left" style="color:var(--primary);margin-right:8px"></i>Histórico de Estado</h3>
+                <button class="btn btn-ghost" style="font-size:12px" onclick="carregarHistorico()">
+                    <i class="fa fa-rotate-right"></i> Atualizar
+                </button>
+            </div>
+            <div class="table-wrap" style="max-height:300px;overflow-y:auto">
+                <table>
+                    <thead>
+                        <tr><th>Sensor</th><th>Estado</th><th>Timestamp</th></tr>
+                    </thead>
+                    <tbody id="tabela-historico"></tbody>
+                </table>
+            </div>
+        </div>
 
-        let markers = [];
+    </div><!-- /tab-dados -->
 
-        function criarIcone(estado) {
-            let cor;
+</div><!-- /main -->
 
-            if (estado === "ativo") cor = "#22c55e";
-            else if (estado === "offline") cor = "#ef4444";
-            else if (estado === "manutencao") cor = "#f59e0b";
-            else cor = "#64748b";
+<script>
+    let sensores = [];
+    let sensoresFiltrados = [];
+    let tabAtiva = 'dashboard';
+    let _toastTimer = null;
 
-            return L.divIcon({
-                className: "",
-                html: `
-                    <div style="
-                        width: 18px;
-                        height: 18px;
-                        border-radius: 50%;
-                        background: ${cor};
-                        border: 3px solid white;
-                        box-shadow: 0 0 0 4px rgba(0,0,0,0.12);
-                    "></div>
-                `,
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
-            });
+    function setApiBanner(offline) {
+        const banner = document.getElementById('api-banner');
+        if (offline) {
+            banner.classList.add('visible');
+            document.body.classList.add('api-offline');
+        } else {
+            banner.classList.remove('visible');
+            document.body.classList.remove('api-offline');
         }
+    }
 
-        function atualizarMapa() {
-            markers.forEach(marker => map.removeLayer(marker));
-            markers = [];
+    function toast(msg, tipo = '') {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.className = 'show' + (tipo ? ' toast-' + tipo : '');
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+    }
 
-            let bounds = [];
+    const map = L.map('map').setView([39.5, -8.0], 6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
 
-            sensoresFiltrados.forEach(sensor => {
-                const marker = L.marker([sensor.lat, sensor.lng], {
-                    icon: criarIcone(sensor.estado)
-                })
+    let markers = [];
+    let mapInitialized = false;
+
+    async function carregarSensores() {
+        try {
+            const response = await fetch("http://localhost:5227/sensores");
+            sensores = await response.json();
+            sensoresFiltrados = [...sensores];
+            preencherFiltroZonas();
+            renderTabela();
+            renderTabelaCompleta();
+            atualizarMapa();
+            atualizarStats();
+            document.getElementById("lastSync").textContent =
+                "Atualizado às " + new Date().toLocaleTimeString("pt-PT");
+            setApiBanner(false);
+        } catch (err) {
+            document.getElementById("lastSync").textContent = "API offline";
+            setApiBanner(true);
+            console.error(err);
+        }
+    }
+
+    function criarIcone(estado) {
+        const cores = { ativo: "#22c55e", manutencao: "#f59e0b", offline: "#ef4444" };
+        const cor = cores[estado] ?? "#64748b";
+        return L.divIcon({
+            className: "",
+            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2.5px solid #1e293b;box-shadow:0 0 0 3px ${cor}44"></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+        });
+    }
+
+    function atualizarMapa() {
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        const bounds = [];
+
+        sensoresFiltrados.forEach(s => {
+            if (!s.lat && !s.lng) return;
+            const m = L.marker([s.lat, s.lng], { icon: criarIcone(s.estado) })
                 .addTo(map)
                 .bindPopup(`
-                    <div style="min-width: 180px;">
-                        <div class="popup-title">${sensor.id}</div>
-                        <div><strong>Zona:</strong> ${sensor.zona}</div>
-                        <div class="popup-status"><strong>Estado:</strong> ${sensor.estado}</div>
-                        <div><strong>Lat:</strong> ${sensor.lat}</div>
-                        <div><strong>Lng:</strong> ${sensor.lng}</div>
+                    <div class="popup-body">
+                        <div class="popup-id">${s.id}</div>
+                        <p>Zona: <span>${s.zona}</span></p>
+                        <p>Estado: <span>${s.estado}</span></p>
+                        <p>Lat: <span>${s.lat}</span> | Lng: <span>${s.lng}</span></p>
                     </div>
                 `);
+            markers.push(m);
+            bounds.push([s.lat, s.lng]);
+        });
 
-                markers.push(marker);
-                bounds.push([sensor.lat, sensor.lng]);
-            });
-
-            if (bounds.length > 0) {
-                map.fitBounds(bounds, { padding: [40, 40] });
-            }
+        if (bounds.length > 0 && !mapInitialized) {
+            map.fitBounds(bounds, { padding: [30, 30] });
+            mapInitialized = true;
         }
+    }
 
-        function renderTabela() {
-            const tabela = document.getElementById("tabela");
-            tabela.innerHTML = "";
+    function renderTabela() {
+        const tbody = document.getElementById("tabela");
+        tbody.innerHTML = "";
+        document.getElementById("countFiltro").textContent = `${sensoresFiltrados.length} sensor(es)`;
 
-            sensoresFiltrados.forEach((s) => {
-                const indexOriginal = sensores.findIndex(sensor => sensor.id === s.id);
+        sensoresFiltrados.forEach(s => {
+            const i = sensores.findIndex(x => x.id === s.id);
+            const isAtivo = s.estado === "ativo";
+            tbody.innerHTML += `
+                <tr>
+                    <td class="sensor-id">${s.id}</td>
+                    <td style="color:var(--muted);font-size:12px">${s.zona}</td>
+                    <td><span class="badge ${s.estado}"><div class="badge-dot"></div>${s.estado}</span></td>
+                    <td style="display:flex;gap:6px">
+                        <button class="${isAtivo ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggle(${i})">
+                            ${isAtivo ? '<i class="fa fa-power-off"></i> Desativar' : '<i class="fa fa-play"></i> Ativar'}
+                        </button>
+                        <button class="btn-toggle-on" style="padding:6px 10px" onclick="removerSensor('${s.id}')" title="Remover da lista (mantém dados)">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                        <button class="btn-toggle-on" style="padding:6px 10px;border-color:rgba(239,68,68,.6)" onclick="removerSensorTudo('${s.id}')" title="Remover da lista e apagar todos os dados">
+                            <i class="fa fa-trash" style="color:#ef4444"></i><i class="fa fa-database" style="color:#ef4444;font-size:10px;margin-left:2px"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    }
 
-                tabela.innerHTML += `
-                    <tr>
-                        <td><strong>${s.id}</strong></td>
-                        <td>${s.zona}</td>
-                        <td>
-                            <span class="estado-badge ${s.estado}">
-                                ${s.estado}
-                            </span>
-                        </td>
-                        <td>${s.lat}</td>
-                        <td>${s.lng}</td>
-                        <td>
-                            <button class="toggle" onclick="toggle(${indexOriginal})">
-                                ${s.estado === "ativo" ? "Desativar" : "Ativar"}
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
+    function renderTabelaCompleta() {
+        const tbody = document.getElementById("tabelaCompleta");
+        tbody.innerHTML = "";
 
-        function atualizarStats() {
-            const total = sensores.length;
-            const ativos = sensores.filter(s => s.estado === "ativo").length;
-            const offline = sensores.filter(s => s.estado === "offline").length;
-            const manutencao = sensores.filter(s => s.estado === "manutencao").length;
+        sensores.forEach((s, i) => {
+            const isAtivo = s.estado === "ativo";
+            tbody.innerHTML += `
+                <tr>
+                    <td class="sensor-id">${s.id}</td>
+                    <td>${s.zona}</td>
+                    <td><span class="badge ${s.estado}"><div class="badge-dot"></div>${s.estado}</span></td>
+                    <td style="color:var(--muted)">${s.lat || '—'}</td>
+                    <td style="color:var(--muted)">${s.lng || '—'}</td>
+                    <td style="display:flex;gap:6px">
+                        <button class="${isAtivo ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggle(${i})">
+                            ${isAtivo ? '<i class="fa fa-power-off"></i> Desativar' : '<i class="fa fa-play"></i> Ativar'}
+                        </button>
+                        <button class="btn-toggle-on" style="padding:6px 10px" onclick="removerSensor('${s.id}')" title="Remover da lista (mantém dados)">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                        <button class="btn-toggle-on" style="padding:6px 10px;border-color:rgba(239,68,68,.6)" onclick="removerSensorTudo('${s.id}')" title="Remover da lista e apagar todos os dados">
+                            <i class="fa fa-trash" style="color:#ef4444"></i><i class="fa fa-database" style="color:#ef4444;font-size:10px;margin-left:2px"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    }
 
-            document.getElementById("totalSensores").textContent = total;
-            document.getElementById("sensoresAtivos").textContent = ativos;
-            document.getElementById("sensoresOffline").textContent = offline;
-            document.getElementById("sensoresManutencao").textContent = manutencao;
-        }
+    function atualizarStats() {
+        document.getElementById("totalSensores").textContent   = sensores.length;
+        document.getElementById("sensoresAtivos").textContent  = sensores.filter(s => s.estado === "ativo").length;
+        document.getElementById("sensoresOffline").textContent = sensores.filter(s => s.estado === "offline").length;
+        document.getElementById("sensoresManutencao").textContent = sensores.filter(s => s.estado === "manutencao").length;
+    }
 
-        function preencherFiltroZonas() {
-            const select = document.getElementById("filtroZona");
-            const zonas = [...new Set(sensores.map(s => s.zona))];
+    function preencherFiltroZonas() {
+        const select = document.getElementById("filtroZona");
+        const zonas = [...new Set(sensores.map(s => s.zona))];
+        select.innerHTML = '<option value="Todos">Todas as zonas</option>';
+        zonas.forEach(z => {
+            const o = document.createElement("option");
+            o.value = z; o.textContent = z;
+            select.appendChild(o);
+        });
+    }
 
-            zonas.forEach(zona => {
-                const option = document.createElement("option");
-                option.value = zona;
-                option.textContent = zona;
-                select.appendChild(option);
-            });
-        }
+    function aplicarFiltros() {
+        const texto = document.getElementById("pesquisaSensor").value.toLowerCase().trim();
+        const zona  = document.getElementById("filtroZona").value;
+        sensoresFiltrados = sensores.filter(s => {
+            return s.id.toLowerCase().includes(texto) &&
+                   (zona === "Todos" || s.zona === zona);
+        });
+        renderTabela();
+        atualizarMapa();
+    }
 
-        function aplicarFiltros() {
-            const texto = document.getElementById("pesquisaSensor").value.toLowerCase().trim();
-            const zona = document.getElementById("filtroZona").value;
+    function resetFiltros() {
+        document.getElementById("pesquisaSensor").value = "";
+        document.getElementById("filtroZona").value = "Todos";
+        sensoresFiltrados = [...sensores];
+        renderTabela();
+        atualizarMapa();
+    }
 
-            sensoresFiltrados = sensores.filter(sensor => {
-                const matchTexto = sensor.id.toLowerCase().includes(texto);
-                const matchZona = zona === "Todos" || sensor.zona === zona;
-                return matchTexto && matchZona;
-            });
+    function inferirZona(id) {
+        const u = id.toUpperCase();
+        if (u.startsWith('S_NRT')) return '1';
+        if (u.startsWith('S_CTR')) return '2';
+        if (u.startsWith('S_SUL')) return '3';
+        if (u.startsWith('S_ILH')) return '4';
+        return '1';
+    }
 
-            renderTabela();
-            atualizarMapa();
-        }
+    function autoZonaDoId(id) {
+        const zona = inferirZona(id);
+        document.getElementById('sensor-zona').value = zona;
+    }
 
-        function resetFiltros() {
-            document.getElementById("pesquisaSensor").value = "";
-            document.getElementById("filtroZona").value = "Todos";
-            sensoresFiltrados = [...sensores];
-            renderTabela();
-            atualizarMapa();
-        }
+    async function toggle(i) {
+        const sensor    = sensores[i];
+        const ativando  = sensor.estado !== "ativo";
+        const novoEstado = ativando ? "ativo" : "manutencao";
 
-        function toggle(i) {
-            if (sensores[i].estado === "ativo") {
-                sensores[i].estado = "offline";
+        try {
+            const res = await fetch(`${API}/sensores/${sensor.id}/estado/${novoEstado}`, { method: "POST" });
+            if (!res.ok) { toast(`Erro ao atualizar sensor ${sensor.id}`, 'err'); return; }
+            sensores[i].estado = novoEstado;
+
+            if (ativando) {
+                await fetch(`${API}/sistema/sensor/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ zona: inferirZona(sensor.id), id: sensor.id, auto: true })
+                });
             } else {
-                sensores[i].estado = "ativo";
+                await fetch(`${API}/sistema/sensor/stop/${sensor.id}`, { method: 'POST' });
             }
 
             aplicarFiltros();
+            renderTabelaCompleta();
             atualizarStats();
+        } catch {
+            toast("Não foi possível contactar a API.", "err");
+        }
+    }
+
+    async function removerSensor(id) {
+        if (!confirm(`Remover "${id}" da lista?\n(Os dados históricos são mantidos na BD.)`)) return;
+        await fetch(`${API}/sistema/sensor/stop/${id}`, { method: 'POST' }).catch(() => {});
+        const res = await fetch(`${API}/sensores/${id}/remover`, { method: 'POST' });
+        if (res.ok) await carregarSensores();
+        else { const e = await res.json(); toast(`Erro: ${e.erro}`, 'err'); }
+    }
+
+    async function removerSensorTudo(id) {
+        if (!confirm(`Remover "${id}" e TODOS os seus dados da BD?\nEsta ação é irreversível.`)) return;
+        await fetch(`${API}/sistema/sensor/stop/${id}`, { method: 'POST' }).catch(() => {});
+        const res = await fetch(`${API}/sensores/${id}/remover-tudo`, { method: 'POST' });
+        if (res.ok) await carregarSensores();
+        else { const e = await res.json(); toast(`Erro: ${e.erro}`, 'err'); }
+    }
+
+    // Carga inicial
+    carregarSensores();
+    carregarAlertas();
+    // Alertas têm max-height fixo — não causam scroll, podem refrescar sozinhos
+    setInterval(() => { if (tabAtiva === 'dashboard') carregarAlertas(); }, 5000);
+
+    // ── SISTEMA ─────────────────────────────────────────────────────────────
+
+    const API = "http://localhost:5227";
+
+    function setEstado(nome, ativo) {
+        const dot   = document.getElementById(`dot-${nome}`);
+        const label = document.getElementById(`label-${nome}`);
+        const btnStart = document.getElementById(`btn-start-${nome}`);
+        const btnStop  = document.getElementById(`btn-stop-${nome}`);
+        if (!dot) return;
+        dot.className   = `dot-status ${ativo ? 'dot-on' : 'dot-off'}`;
+        label.textContent = ativo ? 'A correr' : 'Parado';
+        if (btnStart) btnStart.disabled = ativo;
+        if (btnStop)  btnStop.disabled  = !ativo;
+    }
+
+    async function atualizarStatusSistema() {
+        if (tabAtiva !== 'dashboard') return;
+        try {
+            const res = await fetch(`${API}/sistema/status`);
+            const lista = await res.json();
+            const mapa  = Object.fromEntries(lista.map(p => [p.nome, p.ativo]));
+            setEstado('servidor',   !!mapa['servidor']);
+            ['norte','centro','sul','ilhas'].forEach(z =>
+                setEstado(`gw-${z}`, !!mapa[`gateway_${z}`]));
+            renderSensoresEmExecucao(lista.filter(p => p.nome.startsWith('sensor_') && p.ativo));
+        } catch { /* API ainda não está online */ }
+    }
+
+    function renderSensoresEmExecucao(sensoresProc) {
+        const wrapper = document.getElementById('sensores-em-execucao-wrapper');
+        const lista   = document.getElementById('sensores-em-execucao');
+        if (!sensoresProc.length) { wrapper.style.display = 'none'; return; }
+        wrapper.style.display = 'block';
+        lista.innerHTML = sensoresProc.map(p => {
+            const id = p.nome.replace('sensor_', '').toUpperCase();
+            return `<div class="sensor-chip">
+                <i class="fa fa-microchip"></i>${id}
+                <button onclick="pararSensor('${id}')" title="Parar"><i class="fa fa-xmark"></i></button>
+            </div>`;
+        }).join('');
+    }
+
+    async function iniciarServidor() {
+        const res = await fetch(`${API}/sistema/servidor/start`, { method: 'POST' });
+        if (res.ok) setEstado('servidor', true);
+        else { const e = await res.json(); toast(e.erro, 'err'); }
+    }
+
+    async function pararServidor() {
+        const res = await fetch(`${API}/sistema/servidor/stop`, { method: 'POST' });
+        if (res.ok) setEstado('servidor', false);
+        else { const e = await res.json(); toast(e.erro, 'err'); }
+    }
+
+    async function iniciarGateway(zona) {
+        const res = await fetch(`${API}/sistema/gateway/start/${zona}`, { method: 'POST' });
+        if (res.ok) setEstado(`gw-${zona}`, true);
+        else { const e = await res.json(); toast(e.erro, 'err'); }
+    }
+
+    async function pararGateway(zona) {
+        const res = await fetch(`${API}/sistema/gateway/stop/${zona}`, { method: 'POST' });
+        if (res.ok) setEstado(`gw-${zona}`, false);
+        else { const e = await res.json(); toast(e.erro, 'err'); }
+    }
+
+    async function lancarSensor() {
+        const zona = document.getElementById('sensor-zona').value;
+        const id   = document.getElementById('sensor-id-input').value.trim();
+        const auto = document.getElementById('sensor-auto').checked;
+        if (!id) { toast('Introduz o ID do sensor.', 'err'); return; }
+        const res = await fetch(`${API}/sistema/sensor/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ zona, id, auto })
+        });
+        if (res.ok) {
+            document.getElementById('sensor-id-input').value = '';
+            await atualizarStatusSistema();
+        } else { const e = await res.json(); alert(e.erro); }
+    }
+
+    async function pararSensor(id) {
+        const res = await fetch(`${API}/sistema/sensor/stop/${id}`, { method: 'POST' });
+        if (res.ok) await atualizarStatusSistema();
+        else { const e = await res.json(); toast(e.erro, 'err'); }
+    }
+
+    atualizarStatusSistema();
+    setInterval(atualizarStatusSistema, 15000);
+
+    // ── TABS ────────────────────────────────────────────────────────────────
+
+    function mudarTab(nome, btn) {
+        tabAtiva = nome;
+        document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tab-${nome}`).classList.add('active');
+        btn.classList.add('active');
+        if (nome === 'dados') {
+            carregarDados();
+            carregarHistorico();
+            // auto-refresh fica desligado por defeito — utilizador ativa se quiser
+        } else {
+            clearInterval(dadosAutoRefreshTimer);
+            dadosAutoRefreshTimer = null;
+            const cb = document.getElementById('dados-autorefresh');
+            if (cb) cb.checked = false;
+        }
+    }
+
+    // ── DADOS DA BD ─────────────────────────────────────────────────────────
+
+    let dadosAutoRefreshTimer = null;
+
+    function toggleAutoRefreshDados() {
+        const on = document.getElementById('dados-autorefresh').checked;
+        if (on) { dadosAutoRefreshTimer = setInterval(carregarDados, 5000); }
+        else    { clearInterval(dadosAutoRefreshTimer); dadosAutoRefreshTimer = null; }
+    }
+
+    async function carregarDados() {
+        const sensor = document.getElementById('f-sensor').value.trim();
+        const tipo   = document.getElementById('f-tipo').value;
+        const zona   = document.getElementById('f-zona').value;
+        const limite = document.getElementById('f-limite').value;
+
+        const params = new URLSearchParams({ limite });
+        if (sensor) params.set('sensor', sensor);
+        if (tipo)   params.set('tipo',   tipo);
+        if (zona)   params.set('zona',   zona);
+
+        try {
+            const [resDados, resStats] = await Promise.all([
+                fetch(`${API}/medicoes?${params}`),
+                fetch(`${API}/medicoes/stats`)
+            ]);
+            const dados = await resDados.json();
+            const stats = await resStats.json();
+            renderTabelaDados(dados);
+            renderStatsDados(stats);
+            renderGrafico(dados);
+        } catch {
+            document.getElementById('tabela-dados').innerHTML =
+                '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Erro ao carregar dados. API online?</td></tr>';
+        }
+    }
+
+    function renderTabelaDados(dados) {
+        const tbody   = document.getElementById('tabela-dados');
+        const wrapper = tbody.closest('.table-wrap');
+        const scrollY = wrapper ? wrapper.scrollTop : 0;
+
+        document.getElementById('dados-count').textContent = `${dados.length} registo(s)`;
+
+        if (!dados.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Sem dados para os filtros selecionados.</td></tr>';
+            return;
         }
 
-        preencherFiltroZonas();
-        carregarSensores();
-    </script>
+        const cores = { TEMP:'#f59e0b', HUM:'#0ea5e9', RUIDO:'#a855f7', PM10:'#ef4444',
+                        PM25:'#f97316', CO2:'#22c55e', UV:'#eab308', AR:'#06b6d4' };
+
+        tbody.innerHTML = dados.map(d => `
+            <tr>
+                <td class="sensor-id">${d.sensor_id}</td>
+                <td style="color:var(--muted);font-size:12px">${d.zona}</td>
+                <td><span style="background:${cores[d.tipo] ?? '#6366f1'}22;color:${cores[d.tipo] ?? '#6366f1'};
+                    padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">${d.tipo}</span></td>
+                <td style="font-weight:700">${d.valor}</td>
+                <td style="color:var(--muted);font-size:12px">${d.timestamp}</td>
+            </tr>`).join('');
+
+        if (wrapper) wrapper.scrollTop = scrollY;
+    }
+
+    function renderStatsDados(stats) {
+        document.getElementById('ds-total').textContent = stats.totalGeral.toLocaleString();
+
+        const grid = document.getElementById('dados-stats-grid');
+        const extras = stats.porTipo.map(t => `
+            <div class="dados-stat">
+                <div class="ds-val" style="font-size:20px">${t.total}</div>
+                <div class="ds-label">${t.tipo}</div>
+            </div>`).join('');
+
+        // Preserve total card, replace rest
+        grid.innerHTML = `
+            <div class="dados-stat">
+                <div class="ds-val" id="ds-total">${stats.totalGeral.toLocaleString()}</div>
+                <div class="ds-label">Total medições</div>
+            </div>${extras}`;
+
+        // Preenche filtro de zonas com dados reais
+        const fZona = document.getElementById('f-zona');
+        const zonaAtual = fZona.value;
+        fZona.innerHTML = '<option value="">Todas as zonas</option>' +
+            stats.porZona.map(z => `<option value="${z.zona}">${z.zona} (${z.total})</option>`).join('');
+        fZona.value = zonaAtual;
+    }
+
+    // ── ALERTAS ─────────────────────────────────────────────────────────────
+
+    async function carregarAlertas() {
+        try {
+            const res = await fetch(`${API}/alertas?limite=20`);
+            const alertas = await res.json();
+            renderAlertas(alertas);
+        } catch { }
+    }
+
+    function renderAlertas(alertas) {
+        const lista  = document.getElementById('alertas-lista');
+        const count  = document.getElementById('alertas-count');
+        if (!alertas.length) {
+            lista.innerHTML = '<p style="padding:16px 22px;color:var(--muted);font-size:13px">Sem alertas recentes.</p>';
+            count.textContent = '';
+            return;
+        }
+        count.textContent = `${alertas.length} alerta(s)`;
+        const cores = { TEMP:'#f59e0b', HUM:'#0ea5e9', RUIDO:'#a855f7', PM10:'#ef4444',
+                        PM25:'#f97316', CO2:'#22c55e', UV:'#eab308', AR:'#06b6d4' };
+        lista.innerHTML = alertas.map(a => `
+            <div class="alerta-row">
+                <span class="tipo-badge" style="background:${(cores[a.tipo]??'#6366f1')}22;color:${cores[a.tipo]??'#6366f1'}">${a.tipo}</span>
+                <strong>${a.sensor_id}</strong>
+                <span style="color:var(--muted);font-size:12px">${a.zona}</span>
+                <span style="font-weight:700;color:var(--orange)">${a.valor}</span>
+                <span style="color:var(--muted);font-size:12px;margin-left:auto">${a.timestamp}</span>
+            </div>`).join('');
+    }
+
+    // ── GRÁFICO ──────────────────────────────────────────────────────────────
+
+    let dadosChart = null;
+
+    function renderGrafico(dados) {
+        const canvas    = document.getElementById('medicoes-chart');
+        const card      = document.getElementById('grafico-card');
+        const tipoAtivo = document.getElementById('f-tipo').value;
+
+        if (!dados.length || !tipoAtivo) {
+            card.style.display = 'none';
+            if (dadosChart) { dadosChart.destroy(); dadosChart = null; }
+            return;
+        }
+        card.style.display = 'block';
+
+        const reversed = dados.slice().reverse();
+        const corBase  = { TEMP:'#f59e0b', HUM:'#0ea5e9', RUIDO:'#a855f7', PM10:'#ef4444',
+                           PM25:'#f97316', CO2:'#22c55e', UV:'#eab308', AR:'#06b6d4' };
+        const paleta   = ['#f59e0b','#0ea5e9','#22c55e','#a855f7','#ef4444','#f97316','#06b6d4','#eab308'];
+
+        // Agrupar por sensor_id
+        const porSensor = {};
+        reversed.forEach(d => {
+            if (!porSensor[d.sensor_id]) porSensor[d.sensor_id] = [];
+            porSensor[d.sensor_id].push({ t: d.timestamp.substring(11, 16), v: d.valor });
+        });
+        const sensores = Object.keys(porSensor);
+
+        let labels, datasets;
+
+        if (sensores.length === 1) {
+            // Um sensor → linha preenchida com a cor do tipo
+            const cor = corBase[tipoAtivo] ?? '#6366f1';
+            const pts = porSensor[sensores[0]];
+            labels   = pts.map(p => p.t);
+            datasets = [{ label: sensores[0], data: pts.map(p => p.v),
+                borderColor: cor, backgroundColor: cor + '22',
+                tension: 0.3, pointRadius: 2, fill: true }];
+        } else {
+            // Vários sensores → uma linha por sensor, cores diferentes, legenda visível
+            const allTs = [...new Set(reversed.map(d => d.timestamp.substring(11, 16)))];
+            labels   = allTs;
+            datasets = sensores.map((sid, idx) => {
+                const cor     = paleta[idx % paleta.length];
+                const dataMap = Object.fromEntries(porSensor[sid].map(p => [p.t, p.v]));
+                return { label: sid, data: allTs.map(t => dataMap[t] ?? null),
+                    borderColor: cor, backgroundColor: 'transparent',
+                    tension: 0.3, pointRadius: 3, fill: false, spanGaps: false };
+            });
+        }
+
+        if (dadosChart) { dadosChart.destroy(); dadosChart = null; }
+
+        dadosChart = new Chart(canvas, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: sensores.length > 1,
+                        labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: '#64748b', maxTicksLimit: 12 }, grid: { color: '#1e293b' } },
+                    y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+                }
+            }
+        });
+    }
+
+    // ── HISTÓRICO ────────────────────────────────────────────────────────────
+
+    async function carregarHistorico() {
+        const sensor = document.getElementById('f-sensor').value.trim();
+        const url = sensor
+            ? `${API}/historico?sensor=${encodeURIComponent(sensor)}&limite=30`
+            : `${API}/historico?limite=30`;
+        try {
+            const res  = await fetch(url);
+            const data = await res.json();
+            renderHistorico(data);
+        } catch { }
+    }
+
+    function renderHistorico(data) {
+        const tbody = document.getElementById('tabela-historico');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">Sem histórico registado.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(h => `
+            <tr>
+                <td class="sensor-id">${h.sensor_id}</td>
+                <td><span class="badge ${h.estado}"><div class="badge-dot"></div>${h.estado}</span></td>
+                <td style="color:var(--muted);font-size:12px">${h.timestamp}</td>
+            </tr>`).join('');
+    }
+
+    function limparFiltrosDados() {
+        document.getElementById('f-sensor').value = '';
+        document.getElementById('f-tipo').value   = '';
+        document.getElementById('f-zona').value   = '';
+        document.getElementById('f-limite').value = '100';
+        carregarDados();
+    }
+</script>
 
 </body>
 </html>

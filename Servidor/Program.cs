@@ -23,12 +23,13 @@ class Servidor
         TcpListener server = new TcpListener(IPAddress.Any, 9000);
         server.Start();
 
-        Console.WriteLine("================================================");
+        Console.WriteLine("<================================================>");
         Console.WriteLine(">>> SERVIDOR ONE HEALTH - ATIVO");
-        Console.WriteLine(">>> Base de dados SQLite pronta (FK ativas)");
+        Console.WriteLine(">>> Base de dados SQLite pronta");
         Console.WriteLine($">>> Ficheiro DB: {dbPath}");
+        Console.WriteLine($">>> Iniciado em: {DateTime.Now}");
         Console.WriteLine(">>> A aguardar dados da Gateway na porta 9000...");
-        Console.WriteLine("================================================");
+        Console.WriteLine("<================================================>");
 
         while (true)
         {
@@ -109,6 +110,17 @@ class Servidor
                         AtualizarUltimoContacto(sensorId);
                         Console.WriteLine($"[SENSOR] {sensorId} desligado corretamente.");
                     }
+                    else if (p[0] == "ALERT" && p.Length >= 6)
+                    {
+                        GuardarAlerta(p[1], p[2], p[3], p[4], p[5]);
+                        Console.WriteLine($"[⚠ ALERTA] Sensor:{p[1]} | {p[3]}={p[4]} excede o limite!");
+                    }
+                    else if (p[0] == "SENSOR_ESTADO_CHANGE" && p.Length >= 3)
+                    {
+                        AtualizarEstadoBD(p[1], p[2]);
+                        RegistarHistoricoEstado(p[1], p[2]);
+                        Console.WriteLine($"[ESTADO] Sensor {p[1]} → {p[2]}");
+                    }
 
                     writer.WriteLine("ACK_OK");
                 }
@@ -136,6 +148,7 @@ class Servidor
             CREATE TABLE IF NOT EXISTS sensores (
                 id TEXT PRIMARY KEY,
                 zona TEXT NOT NULL,
+                estado TEXT NOT NULL DEFAULT 'ativo',
                 ultimo_contacto TEXT NOT NULL
             );
         ";
@@ -157,6 +170,41 @@ class Servidor
 
         using var cmd2 = new SqliteCommand(sqlMedicoes, connection);
         cmd2.ExecuteNonQuery();
+
+        string sqlAlertas = @"
+            CREATE TABLE IF NOT EXISTS alertas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sensor_id TEXT NOT NULL,
+                zona TEXT NOT NULL,
+                tipo TEXT NOT NULL,
+                valor REAL NOT NULL,
+                timestamp TEXT NOT NULL
+            );
+        ";
+
+        string sqlHistorico = @"
+            CREATE TABLE IF NOT EXISTS historico_estado (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sensor_id TEXT NOT NULL,
+                estado TEXT NOT NULL,
+                timestamp TEXT NOT NULL
+            );
+        ";
+
+        using var cmd3 = new SqliteCommand(sqlAlertas, connection);
+        cmd3.ExecuteNonQuery();
+
+        using var cmd4 = new SqliteCommand(sqlHistorico, connection);
+        cmd4.ExecuteNonQuery();
+
+        // Migração: adiciona coluna estado a DBs existentes sem ela
+        try
+        {
+            using var cmdMigrate = new SqliteCommand(
+                "ALTER TABLE sensores ADD COLUMN estado TEXT NOT NULL DEFAULT 'ativo'", connection);
+            cmdMigrate.ExecuteNonQuery();
+        }
+        catch { /* coluna já existe — ignorar */ }
     }
 
     static void RegistarSensor(string sensorId, string zona)
@@ -164,10 +212,11 @@ class Servidor
         using var connection = AbrirConexao();
 
         string sql = @"
-            INSERT INTO sensores (id, zona, ultimo_contacto)
-            VALUES (@id, @zona, @ultimo_contacto)
+            INSERT INTO sensores (id, zona, estado, ultimo_contacto)
+            VALUES (@id, @zona, 'ativo', @ultimo_contacto)
             ON CONFLICT(id) DO UPDATE SET
                 zona = excluded.zona,
+                estado = 'ativo',
                 ultimo_contacto = excluded.ultimo_contacto;
         ";
 
@@ -176,6 +225,8 @@ class Servidor
         cmd.Parameters.AddWithValue("@zona", zona);
         cmd.Parameters.AddWithValue("@ultimo_contacto", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss"));
         cmd.ExecuteNonQuery();
+
+        RegistarHistoricoEstado(sensorId, "ativo");
     }
 
     static void AtualizarUltimoContacto(string sensorId)
@@ -207,6 +258,41 @@ class Servidor
         cmd.Parameters.AddWithValue("@tipo", tipo);
         cmd.Parameters.AddWithValue("@valor", valor);
         cmd.Parameters.AddWithValue("@timestamp", timestamp);
+        cmd.ExecuteNonQuery();
+    }
+
+    static void GuardarAlerta(string sensorId, string zona, string tipo, string valorStr, string timestamp)
+    {
+        if (!double.TryParse(valorStr, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out double valor)) return;
+        using var conn = AbrirConexao();
+        var cmd = new SqliteCommand(
+            "INSERT INTO alertas (sensor_id, zona, tipo, valor, timestamp) VALUES (@id, @zona, @tipo, @valor, @ts)", conn);
+        cmd.Parameters.AddWithValue("@id", sensorId);
+        cmd.Parameters.AddWithValue("@zona", zona);
+        cmd.Parameters.AddWithValue("@tipo", tipo);
+        cmd.Parameters.AddWithValue("@valor", valor);
+        cmd.Parameters.AddWithValue("@ts", timestamp);
+        cmd.ExecuteNonQuery();
+    }
+
+    static void AtualizarEstadoBD(string sensorId, string estado)
+    {
+        using var conn = AbrirConexao();
+        var cmd = new SqliteCommand("UPDATE sensores SET estado = @estado WHERE id = @id", conn);
+        cmd.Parameters.AddWithValue("@estado", estado);
+        cmd.Parameters.AddWithValue("@id", sensorId);
+        cmd.ExecuteNonQuery();
+    }
+
+    static void RegistarHistoricoEstado(string sensorId, string estado)
+    {
+        using var conn = AbrirConexao();
+        var cmd = new SqliteCommand(
+            "INSERT INTO historico_estado (sensor_id, estado, timestamp) VALUES (@id, @estado, @ts)", conn);
+        cmd.Parameters.AddWithValue("@id", sensorId);
+        cmd.Parameters.AddWithValue("@estado", estado);
+        cmd.Parameters.AddWithValue("@ts", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss"));
         cmd.ExecuteNonQuery();
     }
 }
