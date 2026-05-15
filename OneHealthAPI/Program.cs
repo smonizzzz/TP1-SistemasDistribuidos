@@ -271,6 +271,37 @@ app.MapGet("/historico", (string? sensor, int limite = 50) =>
     return lista;
 });
 
+// GET /analise — pede análise ao Servidor (que chama o serviço Python via gRPC)
+// Query params: tipo, zona, sensor, inicio, fim (todos opcionais, usar "-" para omitir)
+app.MapGet("/analise", async (string? tipo, string? zona, string? sensor, string? inicio, string? fim) =>
+{
+    string t  = string.IsNullOrWhiteSpace(tipo)   ? "-" : tipo.ToUpper();
+    string z  = string.IsNullOrWhiteSpace(zona)   ? "-" : zona.ToUpper();
+    string s  = string.IsNullOrWhiteSpace(sensor) ? "-" : sensor;
+    string i  = string.IsNullOrWhiteSpace(inicio) ? "-" : inicio;
+    string f  = string.IsNullOrWhiteSpace(fim)    ? "-" : fim;
+
+    try
+    {
+        using var tcp = new System.Net.Sockets.TcpClient("127.0.0.1", 9001);
+        using var sr  = new System.IO.StreamReader(tcp.GetStream());
+        using var sw  = new System.IO.StreamWriter(tcp.GetStream()) { AutoFlush = true };
+
+        sw.WriteLine($"ANALISAR {t} {z} {s} {i} {f}");
+        string? resposta = await sr.ReadLineAsync();
+
+        if (string.IsNullOrWhiteSpace(resposta))
+            return Results.StatusCode(503);
+
+        using var doc = System.Text.Json.JsonDocument.Parse(resposta);
+        return Results.Ok(doc.RootElement.Clone());
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Servidor de análise indisponível: {ex.Message}");
+    }
+});
+
 // GET / — teste rápido
 app.MapGet("/", () => "API OneHealth a funcionar!");
 

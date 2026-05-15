@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Microsoft.Data.Sqlite;
+using Grpc.Net.Client;
+using ServicoAnalise;
 
 class Servidor
 {
@@ -16,36 +18,133 @@ class Servidor
     static Dictionary<string, int> statsPerTipo = new Dictionary<string, int>();
     static Dictionary<string, int> statsPerZona = new Dictionary<string, int>();
 
+    // Canal gRPC para o serviço de análise Python (reutilizável)
+    static GrpcChannel? analiseChannel;
+    static AnaliseService.AnaliseServiceClient? analiseClient;
+
     static void Main()
     {
+        AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+        analiseChannel = GrpcChannel.ForAddress("http://localhost:5200");
+        analiseClient  = new AnaliseService.AnaliseServiceClient(analiseChannel);
+
         CriarBaseDeDados();
 
+        // Porta 9000 — Gateway → Servidor (dados)
         TcpListener server = new TcpListener(IPAddress.Any, 9000);
         server.Start();
+
+        // Porta 9001 — API → Servidor (pedidos de análise RPC)
+        TcpListener serverAnalise = new TcpListener(IPAddress.Any, 9001);
+        serverAnalise.Start();
 
         Console.WriteLine("<================================================>");
         Console.WriteLine(">>> SERVIDOR ONE HEALTH - ATIVO");
         Console.WriteLine(">>> Base de dados SQLite pronta");
         Console.WriteLine($">>> Ficheiro DB: {dbPath}");
         Console.WriteLine($">>> Iniciado em: {DateTime.Now}");
-        Console.WriteLine(">>> A aguardar dados da Gateway na porta 9000...");
+        Console.WriteLine(">>> Gateway → Servidor: porta 9000");
+        Console.WriteLine(">>> API → Análise:      porta 9001");
         Console.WriteLine("<================================================>");
+
+        // Thread para porta 9001 (análise)
+        new Thread(() =>
+        {
+            while (true)
+            {
+                try
+                {
+                    var apiClient = serverAnalise.AcceptTcpClient();
+                    new Thread(() => ProcessarPedidoAnalise(apiClient)) { IsBackground = true }.Start();
+                }
+                catch (Exception ex) { Console.WriteLine($"[ERRO ANÁLISE] {ex.Message}"); }
+            }
+        }) { IsBackground = true }.Start();
 
         while (true)
         {
             try
             {
                 TcpClient gatewayClient = server.AcceptTcpClient();
-
-                new Thread(() =>
-                {
-                    ProcessarGateway(gatewayClient);
-                }) { IsBackground = true }.Start();
+                new Thread(() => ProcessarGateway(gatewayClient)) { IsBackground = true }.Start();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERRO] {ex.Message}");
             }
+        }
+    }
+
+    static void ProcessarPedidoAnalise(TcpClient client)
+    {
+        try
+        {
+            using (client)
+            {
+                using var reader = new StreamReader(client.GetStream());
+                using var writer = new StreamWriter(client.GetStream()) { AutoFlush = true };
+
+                string? linha = reader.ReadLine();
+                if (string.IsNullOrWhiteSpace(linha)) return;
+
+                // Formato: ANALISAR <tipo> <zona> <sensor_id> <inicio> <fim>
+                string[] p = linha.Split(' ');
+                if (p[0] != "ANALISAR" || p.Length < 6)
+                {
+                    writer.WriteLine("ERRO formato_invalido");
+                    return;
+                }
+
+                string tipo     = p[1] == "-" ? "" : p[1];
+                string zona     = p[2] == "-" ? "" : p[2];
+                string sensorId = p[3] == "-" ? "" : p[3];
+                string inicio   = p[4] == "-" ? "" : p[4];
+                string fim      = p[5] == "-" ? "" : p[5];
+
+                Console.WriteLine($"[ANÁLISE] Pedido recebido: tipo={tipo} zona={zona} sensor={sensorId}");
+
+                var resultado = InvocarServicoAnalise(tipo, zona, sensorId, inicio, fim);
+                writer.WriteLine(resultado);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERRO ANÁLISE] {ex.Message}");
+        }
+    }
+
+    static string InvocarServicoAnalise(string tipo, string zona, string sensorId, string inicio, string fim)
+    {
+        try
+        {
+            var resposta = analiseClient!.AnalisarDados(new PedidoAnalise
+            {
+                Tipo     = tipo,
+                Zona     = zona,
+                SensorId = sensorId,
+                Inicio   = inicio,
+                Fim      = fim
+            });
+
+            Console.WriteLine($"[ANÁLISE RPC] media={resposta.Media} risco={resposta.NivelRisco} n={resposta.TotalMedicoes}");
+
+            return System.Text.Json.JsonSerializer.Serialize(new
+            {
+                media         = resposta.Media,
+                maximo        = resposta.Maximo,
+                minimo        = resposta.Minimo,
+                desvio_padrao = resposta.DesvioPadrao,
+                nivel_risco   = resposta.NivelRisco,
+                tendencia     = resposta.Tendencia,
+                total_medicoes = resposta.TotalMedicoes,
+                resumo        = resposta.Resumo
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ANÁLISE RPC] Serviço indisponível: {ex.Message}");
+            return System.Text.Json.JsonSerializer.Serialize(new { erro = "Serviço de análise indisponível." });
         }
     }
 

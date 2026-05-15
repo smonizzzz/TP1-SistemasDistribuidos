@@ -6,12 +6,18 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
+using Grpc.Net.Client;
+using PreProcessamento;
 
 class Gateway
 {
     static string csvPath = "";
     static readonly object lockCsv = new object();
     static readonly DateTime gatewayStartTime = DateTime.Now;
+
+    // Canal gRPC reutilizável (criado uma vez, partilhado por todas as threads)
+    static GrpcChannel? rpcChannel;
+    static PreProcessamentoService.PreProcessamentoServiceClient? rpcClient;
 
     static readonly Dictionary<string, double> thresholds = new()
     {
@@ -67,6 +73,11 @@ class Gateway
             Console.WriteLine($"[ERRO] Ficheiro '{csvFile}' não encontrado.");
             return;
         }
+
+        // Inicializar canal gRPC uma única vez
+        AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+        rpcChannel = GrpcChannel.ForAddress("http://localhost:5100");
+        rpcClient  = new PreProcessamentoService.PreProcessamentoServiceClient(rpcChannel);
 
         TcpListener listener = new TcpListener(IPAddress.Any, porta);
         listener.Start();
@@ -218,18 +229,51 @@ class Gateway
                             writer.WriteLine("ACK_OK");
                             AtualizarLastSync(sensorId);
 
-                            serverWriter.WriteLine($"FORWARD_DATA {sensorId} {zonaAtribuida} {tipo} {parts[2]} {parts[3]}");
-                            serverReader.ReadLine();
+                            // --- RPC: Pré-processamento dos dados ---
+                            string valorFinal = parts[2];
+                            string timestampFinal = parts[3];
+                            bool dadoValido = true;
 
-                            Console.WriteLine($"[DADOS] {tipo}={parts[2]} enviado para o servidor.");
-
-                            if (thresholds.TryGetValue(tipo, out double limite) &&
-                                double.TryParse(parts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out double valNum) &&
-                                valNum > limite)
+                            try
                             {
-                                serverWriter.WriteLine($"ALERT {sensorId} {zonaAtribuida} {tipo} {parts[2]} {parts[3]}");
+                                var resposta = rpcClient!.ProcessarDados(new DadosBrutos
+                                {
+                                    SensorId  = sensorId,
+                                    Zona      = zonaAtribuida,
+                                    Tipo      = tipo,
+                                    Valor     = double.TryParse(parts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out double v) ? v : 0,
+                                    Timestamp = parts[3]
+                                });
+
+                                valorFinal = resposta.Valor.ToString(CultureInfo.InvariantCulture);
+                                timestampFinal = resposta.Timestamp;
+                                dadoValido = resposta.Valido;
+
+                                Console.WriteLine($"[RPC] Pré-processamento: {tipo}={valorFinal} | Válido={dadoValido} | {resposta.Mensagem}");
+                            }
+                            catch (Exception rpcEx)
+                            {
+                                Console.WriteLine($"[RPC] Serviço indisponível — a usar dados originais. ({rpcEx.Message})");
+                            }
+
+                            if (dadoValido)
+                            {
+                                serverWriter.WriteLine($"FORWARD_DATA {sensorId} {zonaAtribuida} {tipo} {valorFinal} {timestampFinal}");
                                 serverReader.ReadLine();
-                                Console.WriteLine($"[⚠ ALERTA] Sensor {sensorId}: {tipo}={valNum} excede o limite de {limite}!");
+                                Console.WriteLine($"[DADOS] {tipo}={valorFinal} enviado para o servidor.");
+
+                                if (thresholds.TryGetValue(tipo, out double limite) &&
+                                    double.TryParse(valorFinal, NumberStyles.Any, CultureInfo.InvariantCulture, out double valNum) &&
+                                    valNum > limite)
+                                {
+                                    serverWriter.WriteLine($"ALERT {sensorId} {zonaAtribuida} {tipo} {valorFinal} {timestampFinal}");
+                                    serverReader.ReadLine();
+                                    Console.WriteLine($"[⚠ ALERTA] Sensor {sensorId}: {tipo}={valNum} excede o limite de {limite}!");
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[RPC] Dado inválido descartado: {tipo}={valorFinal}");
                             }
                         }
                         else

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option csharp_namespace = "ServicoAnalise";
+
+package analise;
+
+service AnaliseService {
+  rpc AnalisarDados (PedidoAnalise) returns (ResultadoAnalise);
+}
+
+message PedidoAnalise {
+  string tipo      = 1;
+  string zona      = 2;
+  string sensor_id = 3;
+  string inicio    = 4;
+  string fim       = 5;
+}
+
+message ResultadoAnalise {
+  double media          = 1;
+  double maximo         = 2;
+  double minimo         = 3;
+  double desvio_padrao  = 4;
+  string nivel_risco    = 5;
+  string tendencia      = 6;
+  int32  total_medicoes = 7;
+  string resumo         = 8;
+}

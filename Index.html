@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -704,6 +705,9 @@
         <button class="tab-btn" onclick="mudarTab('dados', this)">
             <i class="fa fa-table" style="margin-right:6px"></i>Dados da BD
         </button>
+        <button class="tab-btn" onclick="mudarTab('analise', this)">
+            <i class="fa fa-flask" style="margin-right:6px"></i>Análise RPC
+        </button>
     </div>
 
     <!-- TAB: DASHBOARD -->
@@ -1057,6 +1061,94 @@
 
     </div><!-- /tab-dados -->
 
+    <!-- TAB: ANÁLISE RPC -->
+    <div id="tab-analise" class="tab-page">
+
+        <div class="card" style="margin-bottom:24px">
+            <div class="card-header">
+                <h3><i class="fa fa-flask" style="color:var(--primary);margin-right:8px"></i>Pedido de Análise (via gRPC Python)</h3>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+                <div>
+                    <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Tipo de Sensor</label>
+                    <select id="a-tipo" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+                        <option value="">Todos</option>
+                        <option>TEMP</option><option>HUM</option><option>CO2</option>
+                        <option>PM25</option><option>PM10</option><option>RUIDO</option>
+                        <option>UV</option><option>AR</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Zona</label>
+                    <select id="a-zona" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Sensor ID</label>
+                    <input id="a-sensor" type="text" placeholder="ex: S_NRT_001"
+                        style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Data Início</label>
+                    <input id="a-inicio" type="datetime-local"
+                        style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Data Fim</label>
+                    <input id="a-fim" type="datetime-local"
+                        style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="pedirAnalise()" id="btn-analise">
+                <i class="fa fa-magnifying-glass-chart" style="margin-right:6px"></i>Analisar
+            </button>
+        </div>
+
+        <!-- RESULTADOS -->
+        <div id="analise-resultado" style="display:none">
+            <div class="card" style="margin-bottom:24px">
+                <div class="card-header">
+                    <h3><i class="fa fa-chart-bar" style="color:var(--sky);margin-right:8px"></i>Resultado da Análise</h3>
+                    <span id="analise-risco-badge" style="padding:4px 14px;border-radius:20px;font-size:13px;font-weight:600"></span>
+                </div>
+                <p id="analise-resumo" style="color:var(--muted);margin-bottom:20px;font-size:14px"></p>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+                    <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">MÉDIA</div>
+                        <div id="a-res-media" style="font-size:28px;font-weight:700;color:var(--primary)"></div>
+                    </div>
+                    <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">MÁXIMO</div>
+                        <div id="a-res-max" style="font-size:28px;font-weight:700;color:var(--red)"></div>
+                    </div>
+                    <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">MÍNIMO</div>
+                        <div id="a-res-min" style="font-size:28px;font-weight:700;color:var(--green)"></div>
+                    </div>
+                    <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">DESVIO PADRÃO</div>
+                        <div id="a-res-dp" style="font-size:28px;font-weight:700;color:var(--sky)"></div>
+                    </div>
+                    <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">TENDÊNCIA</div>
+                        <div id="a-res-tend" style="font-size:20px;font-weight:700;color:var(--orange)"></div>
+                    </div>
+                    <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">MEDIÇÕES</div>
+                        <div id="a-res-total" style="font-size:28px;font-weight:700;color:var(--text)"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="analise-erro" style="display:none;background:#ef444422;border:1px solid var(--red);border-radius:12px;padding:16px;color:var(--red)">
+            <i class="fa fa-triangle-exclamation" style="margin-right:8px"></i>
+            <span id="analise-erro-msg"></span>
+        </div>
+
+    </div><!-- /tab-analise -->
+
 </div><!-- /main -->
 
 <script>
@@ -1273,9 +1365,9 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ zona: inferirZona(sensor.id), id: sensor.id, auto: true })
                 });
-            } else {
-                await fetch(`${API}/sistema/sensor/stop/${sensor.id}`, { method: 'POST' });
             }
+            // ao desativar, não matar o processo — o Gateway rejeita via heartbeat
+            // e o terminal do sensor aguarda reativação automaticamente
 
             aplicarFiltros();
             renderTabelaCompleta();
@@ -1301,11 +1393,81 @@
         else { const e = await res.json(); toast(`Erro: ${e.erro}`, 'err'); }
     }
 
+    // ── ANÁLISE RPC ─────────────────────────────────────────────────────────────
+
+    async function carregarZonasAnalise() {
+        try {
+            const res  = await fetch(`${API}/sensores`);
+            const data = await res.json();
+            const zonas = [...new Set(data.map(s => s.zona).filter(Boolean))].sort();
+            const sel = document.getElementById('a-zona');
+            sel.innerHTML = '<option value="">Todas</option>' +
+                zonas.map(z => `<option value="${z}">${z}</option>`).join('');
+        } catch { /* API offline */ }
+    }
+
+    async function pedirAnalise() {
+        const btn = document.getElementById('btn-analise');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin" style="margin-right:6px"></i>A analisar...';
+
+        document.getElementById('analise-resultado').style.display = 'none';
+        document.getElementById('analise-erro').style.display = 'none';
+
+        const tipo   = document.getElementById('a-tipo').value;
+        const zona   = document.getElementById('a-zona').value;
+        const sensor = document.getElementById('a-sensor').value.trim();
+        const inicio = document.getElementById('a-inicio').value.replace('T', ' ');
+        const fim    = document.getElementById('a-fim').value.replace('T', ' ');
+
+        const params = new URLSearchParams();
+        if (tipo)   params.append('tipo',   tipo);
+        if (zona)   params.append('zona',   zona);
+        if (sensor) params.append('sensor', sensor);
+        if (inicio) params.append('inicio', inicio);
+        if (fim)    params.append('fim',    fim);
+
+        try {
+            const res  = await fetch(`${API}/analise?${params}`);
+            const data = await res.json();
+
+            if (data.erro) {
+                document.getElementById('analise-erro-msg').textContent = data.erro;
+                document.getElementById('analise-erro').style.display = 'block';
+            } else {
+                document.getElementById('a-res-media').textContent  = data.media ?? '-';
+                document.getElementById('a-res-max').textContent    = data.maximo ?? '-';
+                document.getElementById('a-res-min').textContent    = data.minimo ?? '-';
+                document.getElementById('a-res-dp').textContent     = data.desvio_padrao ?? '-';
+                document.getElementById('a-res-tend').textContent   = data.tendencia ?? '-';
+                document.getElementById('a-res-total').textContent  = data.total_medicoes ?? '-';
+                document.getElementById('analise-resumo').textContent = data.resumo ?? '';
+
+                const riscoEl = document.getElementById('analise-risco-badge');
+                const cores = { baixo:'#22c55e', moderado:'#f59e0b', elevado:'#f97316', critico:'#ef4444', 'sem dados':'#64748b', desconhecido:'#64748b' };
+                const risco = data.nivel_risco ?? 'desconhecido';
+                riscoEl.textContent = 'Risco: ' + risco.toUpperCase();
+                riscoEl.style.background = (cores[risco] ?? '#64748b') + '33';
+                riscoEl.style.color = cores[risco] ?? '#94a3b8';
+
+                document.getElementById('analise-resultado').style.display = 'block';
+            }
+        } catch (err) {
+            document.getElementById('analise-erro-msg').textContent = 'Não foi possível contactar a API: ' + err.message;
+            document.getElementById('analise-erro').style.display = 'block';
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-magnifying-glass-chart" style="margin-right:6px"></i>Analisar';
+    }
+
     // Carga inicial
     carregarSensores();
     carregarAlertas();
+    carregarZonasAnalise();
     // Alertas têm max-height fixo — não causam scroll, podem refrescar sozinhos
     setInterval(() => { if (tabAtiva === 'dashboard') carregarAlertas(); }, 5000);
+    setInterval(() => { if (tabAtiva === 'dashboard') carregarSensores(); }, 10000);
 
     // ── SISTEMA ─────────────────────────────────────────────────────────────
 

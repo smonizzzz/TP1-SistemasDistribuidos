@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option csharp_namespace = "PreProcessamento";
+
+package preprocess;
+
+service PreProcessamentoService {
+  rpc ProcessarDados (DadosBrutos) returns (DadosProcessados);
+}
+
+message DadosBrutos {
+  string sensor_id = 1;
+  string zona      = 2;
+  string tipo      = 3;
+  double valor     = 4;
+  string timestamp = 5;
+}
+
+message DadosProcessados {
+  string sensor_id = 1;
+  string zona      = 2;
+  string tipo      = 3;
+  double valor     = 4;
+  string timestamp = 5;
+  bool   valido    = 6;
+  string mensagem  = 7;
+}
